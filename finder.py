@@ -27,25 +27,33 @@ class Finder:
             currentNode:str, currentCost:int = heapq.heappop(priorityQueue)
             if currentNode == destiny :
                 #The total cost is returned along with the way from the source to the destination
-                return (self.totalSteps*10, self.pathTaken())
+                return (self.totalSteps*self.C1(), self.pathTaken())
             #relaxamento
             for neighbour in self.__getNeighbours(origin):
+                totalCost = currentCost + self.C1()
+                if neighbour not in visited or totalCost < visited[neighbour][1]:
+                    pass
         
-    def __getNeighbours(self,coordinate:Tuple[int,int]):
-        a = [self.__goDown(coordinate), self.__]
+    def __getNeighbours(self,coord:Tuple[int,int]) -> List[Tuple[int,int]]:
+        neighboursBeta = [self.__goDown(coord), self.__goUp(coord), self.__goRight(coord), self.__goLeft(coord)]
+        #filter the invalid
+        for i in range(len(neighboursBeta)):
+            if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > 30) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > 30)):
+                neighboursBeta[i] = None
+        return [node for node in neighboursBeta node != None] # existe a possibilidade da lista retornada estar vazia
 
     def greedySearch(sefl, costFun:function, heuristicFun:function):
         #somente se costFun.__name__ == C3 || == C4 então self.totalSteps setá incrementado
         pass
     #methods related to moviment
-    def __goDown(self) -> Tuple[int,int]:
-        return (self.currentPosition, self.currentPosition-1)
+    def __goDown(self, position:Tuple[int,int]) -> Tuple[int,int]:
+        return (position[0], position[1]-1)
     def __goUp(self) -> Tuple[int,int]:
-            return (self.currentPosition, self.currentPosition+1)
+            return (position[0], position[1]+1)
     def __goRight(self) -> Tuple[int,int]:
-            return (self.currentPosition+1, self.currentPosition)
+            return (position[0]+1, position[1])
     def __goLeft(self) -> Tuple[int,int]:
-            return (self.currentPosition-1, self.currentPosition-1)
+            return (position[0]-1, position[0])
 
     #methods related to heuristics
     def euclidianHeuristic(self, neighbour:Tuple[int,int]) -> Tuple[int,int]:
