@@ -3,7 +3,7 @@ import math
 import heapq
 
 class Finder:
-    def __init__(self, nodeCollection:Set[Node], origin:Tuple[int,int], destiny:Tuple[int, int]) -> None:
+    def __init__(self, nodeCollection:Set[Node], origin:Tuple[int,int], destiny:Tuple[int, int], gridProportion=30) -> None:
         #atributes for the coordinates
         self.origin = origin
         self.destiny = destiny
@@ -14,33 +14,79 @@ class Finder:
         #cost related atributes
         self.totalCost = 0
         self.totalSteps = 0
+        #auxiliary atributs
+        self.__nodesGenerated:List[Tuple[int,int]] = []
+        self.__gridProportion = gridProportion
     #algorithms
     def uniformCost(self, costFun:function) -> List[Tuple[int,int]]: #aka Dijkstra
         if costFun.__name__ == 'self.C1':
             return self.__uniformCostC1()
+        elif costFun.__name__ == 'self.C2':
+            return self.__uniformCostC2()
+        elif costFun.__name__ == 'self.C3':
+            return self.__uniformCostC3()
+        else:
+            return self.__uniformCostC4()
 
-    def __uniformCostC1(self) -> Tuple[int,str]:
-        priorityQueue = [(self.origin,0)]
-        visited = {self.origin:(self.origin+"'"), 0} #da fonte para a fonte, a distância é 0
+    def __uniformCostC1(self) -> Tuple[int,List[Tuple[str,int,str]]]:
+        """
+        In the way uniform cost search is implementend it depends upon a priority queue
+        for choosing among the adjacents with the minimum path and a dictionary for repre-
+        senting the map. 
+        
+        At the beggining, it may seem like they represent the exact same thing and that
+        the only data structure needed is the dictionary that represent the map, but this
+        is an erronous notion because the algorithm needs a way to be able to store the
+        adjacents nodes of the current node.
+
+        For this, the way found was storing them in the priority queue.
+
+        If we were using the traditional Dijkstra, visited would be of the type
+        dict[str,List[Tuple[int,str]]], but since this is the UCS the type is of 
+        dict[str,Tuple[int,str]]. This happen because of two reasons:
+
+        1. In this variation only the relaxed neighbours are appended into the priority
+        Queue
+        2. The cost between the `current` and `adj` is stored in the `adj`, not in the 
+        `current`, so, when adding elements in the `visited`, this does not generates
+        repeated keys.   
+        """
+        priorityQueue = [(0,self.origin)]
+        visited = {self.origin:(0,str(self.origin)+"'")} #da fonte para a fonte, a distância é 0
 
         while priorityQueue:
-            currentNode:str, currentCost:int = heapq.heappop(priorityQueue)
+            currentCost:int, currentNode:str = heapq.heappop(priorityQueue)
             if currentNode == destiny :
                 #The total cost is returned along with the way from the source to the destination
-                return (self.totalSteps*self.C1(), self.pathTaken())
+                return (currentCost+self.C1(), self.__pathTaken(visited,destiny))
+            self.__nodesGenerated.append(currentNode)
             #relaxamento
-            for neighbour in self.__getNeighbours(origin):
+            for neighbour in self.__getNeighbours(currentNode):
                 totalCost = currentCost + self.C1()
-                if neighbour not in visited or totalCost < visited[neighbour][1]:
-                    pass
+                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
+                    heapq.heappush(priorityQueue, (totalCost,neighbour))
+                    visited[neighbour] = (totalCost,currentNode)
+                    self.totalSteps += 1
+
+    def __pathTaken(self, minSpanningTree:Dict[str,Tuple[int,str]], definitiveDestiny:str):
+        pathTaken:List[Tuple[str,int,str]] = []
+        
+        parent:str = minSpanningTree[definitiveDestiny][1]
+        changningDestiny:str = definitiveDestiny
+
+        while parent != str(self.origin)+"'":
+            pathTaken.append((changingDestiny,minSpanningTree[changingDestiny][0]),minSpanningTree[changingDestiny][1])
+            parent = minSpanningTree[changingDestiny][1]
+            changiningDestiny = parent
+        return pathTaken.reverse()
         
     def __getNeighbours(self,coord:Tuple[int,int]) -> List[Tuple[int,int]]:
         neighboursBeta = [self.__goDown(coord), self.__goUp(coord), self.__goRight(coord), self.__goLeft(coord)]
         #filter the invalid
         for i in range(len(neighboursBeta)):
-            if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > 30) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > 30)):
+            if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
                 neighboursBeta[i] = None
-        return [node for node in neighboursBeta node != None] # existe a possibilidade da lista retornada estar vazia
+        return [node for node in neighboursBeta ((node != None) and (not self.__wasItGenerated(node)))] # existe a possibilidade da lista retornada estar vazia
 
     def greedySearch(sefl, costFun:function, heuristicFun:function):
         #somente se costFun.__name__ == C3 || == C4 então self.totalSteps setá incrementado
@@ -91,7 +137,8 @@ class Finder:
         self.totalCost = 0
         self.totalSteps = 0
     #auxiliary methods
-
+    def __wasItGenerated(self, coord:Tuple[int,int]):
+        return coord in self.__nodesGenerated
 def main():
     """
     input:
