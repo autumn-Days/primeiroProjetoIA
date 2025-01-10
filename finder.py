@@ -66,7 +66,7 @@ class Finder:
 #        repeated keys.   
         priorityQueue = [(0,self.origin)]
         visited = {self.origin:(0,str(self.origin)+"'")} #da fonte para a fonte, a distância é 0
-
+        isFirstIteration = True
         while priorityQueue:
             currentCost, currentNode = heapq.heappop(priorityQueue)
             if currentNode == self.destiny :
@@ -74,7 +74,8 @@ class Finder:
                 return (currentCost+self.C1(), self.__pathTaken(visited,self.destiny))
             self.__nodesVisited.append(currentNode)
             #relaxamento
-            for neighbour in self.__getNeighbours(currentNode):
+            neighbours = self.__getNeighbours(currentNode)
+            for neighbour in neighbours:
                 totalCost = currentCost + self.C1()
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
                     heapq.heappush(priorityQueue, (totalCost,neighbour))
@@ -107,6 +108,7 @@ class Finder:
     def greedySearch(self, costFun, heuristicFun):#self, costFun:Callable[None], heuristicFun:Callable[Tuple[int,int]]):
         #somente se costFun.__name__ == C3 || == C4 então self.totalSteps setá incrementado
         pass
+
     #methods related to moviment
     def __goDown(self, position:Tuple[int,int]) -> Tuple[int,int]:
         return (position[0], position[1]-1)
@@ -115,7 +117,7 @@ class Finder:
     def __goRight(self, position) -> Tuple[int,int]:
             return (position[0]+1, position[1])
     def __goLeft(self, position) -> Tuple[int,int]:
-            return (position[0]-1, position[0])
+            return (position[0]-1, position[1])
 
     #methods related to heuristics
     def euclidianHeuristic(self, neighbour:Tuple[int,int]) -> Tuple[int,int]:
@@ -155,17 +157,25 @@ class Finder:
     #auxiliary methods
     def __wasItVisited(self, coord:Tuple[int,int]):
         return coord in self.__nodesVisited
-
 def main():
-    a = Finder((2,1),(0,0),gridProportion=2)
-    print((a.uniformCostC1())[1])
-    
+    a = Finder((0,0),(3,3),gridProportion=3)
+    try:
+        print(a.uniformCostC1()[1])
+    except TypeError:
+        print("deu ruim")
+    #a.tester()
 if __name__ == "__main__":
     main()
 
 """
 casos de testes
-(0,0) -> (3,3)
+(0,0) -> (3,3) qProportion=3
+    Esse caso deu errado, pois existiam 1 caminho não adjacente com o mesmo peso
+    de um caminho adjacente, então, aconteceu de o caminho não adjacente ser es-
+    colhido.
+    
+    Portanto, antes de fazer o pop do dicionário, é necessário observar se o nódulo
+    que no qual o pop foi feito é adjacente ao currentNode.
 """
 
 
