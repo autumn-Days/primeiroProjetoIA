@@ -178,6 +178,10 @@ casos de testes
     
     Portanto, antes de fazer o pop do dicionário, é necessário observar se o nódulo
     que no qual o pop foi feito é adjacente ao currentNode.
+
+    [RESOLVIDO]
+
+    e a justificativa que eu dei antes não é precisa.
 """
 
 
