@@ -13,37 +13,37 @@ class Finder:
         self.amountNodesVisited:int = 0
         #cost related atributes
         self.totalCost = 0
-        self.totalSteps = 0
         #auxiliary atributs
         self.__nodesGenerated:List[Tuple[int,int]] = []
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
     #algorithms self, costFun:Callable[None], is2print=True) -> Tuple[int,List[Tuple[str,int,str]]]
-    def uniformCost(self, costFun, is2print=True):
-        try:
-            if costFun.__name__ == 'self.C1':
-                #totalCost,path:List[Tuple[int,int]] =  self.__uniformCostC1()
-                a =  self.__uniformCostC1()
-                if is2print:
-                    self.__showResult(totalCost,path)
-                return (totalCost,path)
-            elif costFun.__name__ == 'self.C2':
-                return self.__uniformCostC2()
-            elif costFun.__name__ == 'self.C3':
-                return self.__uniformCostC3()
-            else:
-                return self.__uniformCostC4()
-        except:
-            print("oi")
+
+    def uniformCost(self, costFunction:str, is2print=True):
+        totalCost,path = None,None
+    
+        if costFunction == 'C1':
+            totalCost,path = self.uniformCost2(self.C1)
+        elif costFunction == 'C2':
+            totalCost,path = self.uniformCost2(self.C2)
+        elif costFunction == 'C3':
+            totalCost,path = self.uniformCost2(self.C3)
+        else:
+            totalCost,path = self.uniformCost2(self.C4)
+    
+        if is2print:
+            self.__showResult(totalCost,path)
+        return (totalCost,path)
+
     def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]]) -> None:
-        print(f"{path[0][0]} -> {path[0][2]} : {totalCost}")
+        print(f"{path[0][0]} -> {self.destiny} : {totalCost}")
 
-        for i in len(path):
-            print(f"{path[i][0]}->{path[i][1]}->{path[i][2]}")
+        for i in range(len(path)):
+            print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}",end="")
             if i != len(path)-1:
-                print(" --> ")
+                print(" --> ",end="")
 
-    def uniformCostC1(self) -> Tuple[int,List[Tuple[str,int,str]]]:
+    def uniformCost2(self, costFunction:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
 #        In the way uniform cost search is implementend it depends upon a priority queue
 #        for choosing among the adjacents with the minimum path and a dictionary for repre-
 #        senting the map. 
@@ -66,21 +66,19 @@ class Finder:
 #        repeated keys.   
         priorityQueue = [(0,self.origin)]
         visited = {self.origin:(0,str(self.origin)+"'")} #da fonte para a fonte, a distância é 0
-        isFirstIteration = True
         while priorityQueue:
             currentCost, currentNode = heapq.heappop(priorityQueue)
             if currentNode == self.destiny :
                 #The total cost is returned along with the way from the source to the destination
-                return (currentCost+self.C1(), self.__pathTaken(visited,self.destiny))
+                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
             self.__nodesVisited.append(currentNode)
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
-                totalCost = currentCost + self.C1()
+                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour))
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
                     heapq.heappush(priorityQueue, (totalCost,neighbour))
                     visited[neighbour] = (totalCost,currentNode)
-                    self.totalSteps += 1
 
     def __pathTaken(self, minSpanningTree:Dict[str,Tuple[int,str]], definitiveDestiny:str):
         pathTaken:List[Tuple[str,int,str]] = []
@@ -133,20 +131,21 @@ class Finder:
         x2,y2 = destiny
         return abs(x1-x2) + abs(y1-y2)
     #methods related to cost calculations
-    def C1(self) -> None:
+    def C1(self, nothingImportant) -> None:
         return 10
     def C2(self, isVertical:bool) -> None:
         if isVertical :
             return  10
         return 15
+    #nas funções de custo C3 e C4 eu subtraio 1 pois a lista já começa com a origem
     def C3(self, isVertical:bool) -> None:
         if isVertical:
             return 10
-        return 10 + (abs((5-self.totalSteps))%6)
+        return 10 + (abs((5-len(self.__nodesVisited-1)))%6)
     def C4(self, isVertical:bool) -> None:
         if isVertical:
             return 10
-        return 5 + (abs((10-self.totalSteps))%11)
+        return 5 + (abs((10-len(self.__nodesVisited-1)))%11)
     #other methods
     def reset(self):
         self.amountNodesGenerated:int = 0
@@ -157,10 +156,13 @@ class Finder:
     #auxiliary methods
     def __wasItVisited(self, coord:Tuple[int,int]):
         return coord in self.__nodesVisited
+    def __isItVertical(self, currentNode:Tuple[int,int], neighbour:Tuple[int,int]):
+        return abs(currentNode[1] - neighbour[1]) > 0
 def main():
-    a = Finder((0,0),(3,3),gridProportion=3)
+    a = Finder((0,0),(2,2),gridProportion=3)
     try:
-        print(a.uniformCostC1()[1])
+        b,c = a.uniformCost("C3")
+        print(" ")
     except TypeError:
         print("deu ruim")
     #a.tester()
