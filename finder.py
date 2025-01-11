@@ -79,7 +79,7 @@ class Finder:
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
-                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour))
+                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1)
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
                     heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1   ))
                     visited[neighbour] = (totalCost,currentNode,currentSteps+1)
@@ -135,21 +135,21 @@ class Finder:
         x2,y2 = destiny
         return abs(x1-x2) + abs(y1-y2)
     #methods related to cost calculations
-    def C1(self, nothingImportant) -> None:
+    def C1(self, nothingImportant, nothingImportant2) -> None:
         return 10
-    def C2(self, isVertical:bool) -> None:
+    def C2(self, isVertical:bool, nothingImportant) -> None:
         if isVertical :
             return  10
         return 15
     #nas funções de custo C3 e C4 eu subtraio 1 pois a lista já começa com a origem
-    def C3(self, isVertical:bool) -> None:
+    def C3(self, isVertical:bool, amountSteps) -> None:
         if isVertical:
             return 10
-        return 10 + (abs((5-len(self.__nodesVisited)-1))%6)
-    def C4(self, isVertical:bool) -> None:
+        return 10 + (abs((5-amountSteps%6)))
+    def C4(self, isVertical:bool, amountSteps) -> None:
         if isVertical:
             return 10
-        return 5 + (abs((10-len(self.__nodesVisited)-1))%11)
+        return 5 + (abs((10-amountSteps%11)))
     #other methods
     def reset(self):
         self.amountNodesGenerated:int = 0
@@ -165,7 +165,7 @@ class Finder:
 def main():
     a = Finder((0,0),(2,2),gridProportion=3)
     try:
-        b,c = a.uniformCost("C2")
+        b,c = a.uniformCost("C4")
         print(" ")
     except TypeError:
         print("deu ruim")
