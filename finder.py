@@ -23,27 +23,27 @@ class Finder:
         totalCost,path = None,None
     
         if costFunction == 'C1':
-            totalCost,path = self.uniformCost2(self.C1)
+            totalCost,path = self.__uniformCost(self.C1)
         elif costFunction == 'C2':
-            totalCost,path = self.uniformCost2(self.C2)
+            totalCost,path = self.__uniformCost(self.C2)
         elif costFunction == 'C3':
-            totalCost,path = self.uniformCost2(self.C3)
+            totalCost,path = self.__uniformCost(self.C3)
         else:
-            totalCost,path = self.uniformCost2(self.C4)
-    
+            totalCost,path = self.__uniformCost(self.C4)
         if is2print:
             self.__showResult(totalCost,path)
         return (totalCost,path)
 
     def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]]) -> None:
-        print(f"{path[0][0]} -> {self.destiny} : {totalCost}")
+        print(f"Cost from {path[0][0]} to {self.destiny} : {totalCost}")
+        print(f"steps from {path[0][0]} to {self.destiny} : {len(path)}")
 
         for i in range(len(path)):
             print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}",end="")
             if i != len(path)-1:
                 print(" --> ",end="")
 
-    def uniformCost2(self, costFunction:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
+    def __uniformCost(self, costFunction:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
 #        In the way uniform cost search is implementend it depends upon a priority queue
 #        for choosing among the adjacents with the minimum path and a dictionary for repre-
 #        senting the map. 
@@ -64,21 +64,25 @@ class Finder:
 #        2. The cost between the `current` and `adj` is stored in the `adj`, not in the 
 #        `current`, so, when adding elements in the `visited`, this does not generates
 #        repeated keys.   
-        priorityQueue = [(0,self.origin)]
-        visited = {self.origin:(0,str(self.origin)+"'")} #da fonte para a fonte, a distância é 0
+        priorityQueue = [(0,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
+        visited = {self.origin:(0,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
+        #stepsTaken = 0
         while priorityQueue:
-            currentCost, currentNode = heapq.heappop(priorityQueue)
+            currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
+            #parent = visited[currentNode][1]
+            #if currentNode != self.origin:
+            #    stepsTaken = visited[parent][2]+1
             if currentNode == self.destiny :
                 #The total cost is returned along with the way from the source to the destination
                 return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
-            self.__nodesVisited.append(currentNode)
+            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
                 totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour))
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
-                    heapq.heappush(priorityQueue, (totalCost,neighbour))
-                    visited[neighbour] = (totalCost,currentNode)
+                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1   ))
+                    visited[neighbour] = (totalCost,currentNode,currentSteps+1)
 
     def __pathTaken(self, minSpanningTree:Dict[str,Tuple[int,str]], definitiveDestiny:str):
         pathTaken:List[Tuple[str,int,str]] = []
@@ -161,7 +165,7 @@ class Finder:
 def main():
     a = Finder((0,0),(2,2),gridProportion=3)
     try:
-        b,c = a.uniformCost("C3")
+        b,c = a.uniformCost("C2")
         print(" ")
     except TypeError:
         print("deu ruim")
