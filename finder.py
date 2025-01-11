@@ -141,11 +141,11 @@ class Finder:
     def C3(self, isVertical:bool) -> None:
         if isVertical:
             return 10
-        return 10 + (abs((5-len(self.__nodesVisited-1)))%6)
+        return 10 + (abs((5-len(self.__nodesVisited)-1))%6)
     def C4(self, isVertical:bool) -> None:
         if isVertical:
             return 10
-        return 5 + (abs((10-len(self.__nodesVisited-1)))%11)
+        return 5 + (abs((10-len(self.__nodesVisited)-1))%11)
     #other methods
     def reset(self):
         self.amountNodesGenerated:int = 0
@@ -178,10 +178,6 @@ casos de testes
     
     Portanto, antes de fazer o pop do dicionário, é necessário observar se o nódulo
     que no qual o pop foi feito é adjacente ao currentNode.
-
-    [RESOLVIDO]
-
-    e a justificativa que eu dei antes não é precisa.
 """
 
 
