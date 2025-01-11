@@ -2,6 +2,12 @@ from typing import *
 import math
 import heapq
 from collections import deque
+from enum import Enum
+
+class Heuristic(Enum):
+    EUCLIDIAN:int = 0
+    MANHATTAN:int = 1
+
 
 class Finder:
     def __init__(self, origin:Tuple[int,int], destiny:Tuple[int, int], gridProportion=30) -> None:
@@ -19,6 +25,27 @@ class Finder:
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
     #algorithms self, costFun:Callable[None], is2print=True) -> Tuple[int,List[Tuple[str,int,str]]]
+
+    def greedy(self, heuristic:Heuristic):
+
+        queue = [(0,self.origin,0)]
+        visited = {self.origin:(0,str(self.origin)+"'",0)}
+
+        while queue:
+            currentCost, currentNode, currentSteps = heapq.heappop(queue)
+            if(currentNode == self.destiny):
+                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
+            self.__nodesVisited.append(currentNode)
+            for neighbour in self.__getNeighbours(currentNode):
+                if(heuristic == Heuristic.MANHATTAN):
+                    totalCost =  self.manhatamHeuristic(neighbour)
+                elif(heuristic == Heuristic.EUCLIDIAN):
+                    totalCost =  self.euclidianHeuristic(neighbour)
+                heapq.heappush(queue, (totalCost,neighbour,currentSteps+1))
+                visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+                
+
+
 
     def uniformCost(self, costFunction:str, is2print=True):
         totalCost,path = None,None
@@ -158,7 +185,7 @@ class Finder:
         return 5 + (abs((10-amountSteps%11)))
 
     #methods related to heuristics
-    def euclidianHeuristic(self, neighbour:Tuple[int,int]) -> Tuple[int,int]:
+    def euclidianHeuristic(self, neighbour:Tuple[int,int]) -> int:
         return 10 * (self.__euc(neighbour, self.destiny))
     def __euc(self,neighbour:Tuple[int,int], destiny:Tuple[int,int]):
         x1,y1 = neighbour
@@ -221,8 +248,13 @@ class Finder:
 def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     try:
-        b,c = a.BFS("C4")
-        print(" ")
+        b,c = a.greedy(Heuristic.EUCLIDIAN)
+        print(b)
+        print(c)
+
+        b,c = a.BFS("C1")
+        print(b)
+        print(c)
     except TypeError:
         print("deu ruim")
     #a.tester()
