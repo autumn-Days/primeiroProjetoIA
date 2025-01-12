@@ -2,12 +2,6 @@ from typing import *
 import math
 import heapq
 from collections import deque
-from enum import Enum
-
-class Heuristic(Enum):
-    EUCLIDIAN:int = 0
-    MANHATTAN:int = 1
-
 
 class Finder:
     def __init__(self, origin:Tuple[int,int], destiny:Tuple[int, int], gridProportion=30) -> None:
@@ -26,21 +20,22 @@ class Finder:
         self.__gridProportion = gridProportion
     #algorithms self, costFun:Callable[None], is2print=True) -> Tuple[int,List[Tuple[str,int,str]]]
 
-    def greedy(self, heuristic:Heuristic):
-
-        queue = [(0,self.origin,0)]
-        visited = {self.origin:(0,str(self.origin)+"'",0)}
+    def greedy(self, costFun:None, heuristic:Callable):
+        """
+        A função de custo não será utilizada, será apenas para manter a uniformidade
+        entre as assinaturas das funções
+        """
+        heuristicValueOrigin = heuristic(self.origin)
+        queue = [(heuristicValueOrigin,self.origin,0)]
+        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0)}
 
         while queue:
             currentCost, currentNode, currentSteps = heapq.heappop(queue)
             if(currentNode == self.destiny):
-                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
+                return (currentCost, self.__pathTaken(visited,self.destiny))
             self.__nodesVisited.append(currentNode)
             for neighbour in self.__getNeighbours(currentNode):
-                if(heuristic == Heuristic.MANHATTAN):
-                    totalCost =  self.manhatamHeuristic(neighbour)
-                elif(heuristic == Heuristic.EUCLIDIAN):
-                    totalCost =  self.euclidianHeuristic(neighbour)
+                totalCost =  currentCost + heuristic(neighbour) #tem que somar com `currentCost`, se não o valor total será apresentado como "0" pq o custo heurístico do destino para o destino é zero
                 heapq.heappush(queue, (totalCost,neighbour,currentSteps+1))
                 visited[neighbour] = (totalCost,currentNode,currentSteps+1)
                 
