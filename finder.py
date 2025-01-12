@@ -44,40 +44,14 @@ class Finder:
                 heapq.heappush(queue, (totalCost,neighbour,currentSteps+1))
                 visited[neighbour] = (totalCost,currentNode,currentSteps+1)
                 
-
-
-
-    def uniformCost(self, costFunction:str, is2print=True):
-        totalCost,path = None,None
-    
-        if costFunction == 'C1':
-            totalCost,path = self.__uniformCost(self.C1)
-        elif costFunction == 'C2':
-            totalCost,path = self.__uniformCost(self.C2)
-        elif costFunction == 'C3':
-            totalCost,path = self.__uniformCost(self.C3)
-        else:
-            totalCost,path = self.__uniformCost(self.C4)
+    def runPathFiding(self, pathFidingAlgo:str, costFun:str, heuristicFun:str="None", is2print=True):
+        pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
+        totalCost, path =  pathFidingAlgo(getattr(self,costFun), getattr(self,heuristicFun,None))
         if is2print:
             self.__showResult(totalCost,path)
         return (totalCost,path)
-
-    def BFS(self, costFunction:str, is2print=True):
-        totalCost,path = None,None
-    
-        if costFunction == 'C1':
-            totalCost,path = self.__BFS(self.C1)
-        elif costFunction == 'C2':
-            totalCost,path = self.__BFS(self.C2)
-        elif costFunction == 'C3':
-            totalCost,path = self.__BFS(self.C3)
-        else:
-            totalCost,path = self.__BFS(self.C4)
-        if is2print:
-            self.__showResult(totalCost,path)
-        return (totalCost,path)        
-
-    def __BFS(self,costFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
+        
+    def BFS(self,costFun:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
         É necessário guardar o pai do nó `current` para fazer o `traceback`,
         a posição de cada nó gerado (obviamente) e o custo dele até o seu pai,
@@ -112,28 +86,29 @@ class Finder:
                 queue.append((newCost,neighbour,currentSteps+1))
                 travelled[neighbour] = (newCost, currentNode, currentSteps+1)
                 
-
-    def __uniformCost(self, costFunction:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
-#        In the way uniform cost search is implementend it depends upon a priority queue
-#        for choosing among the adjacents with the minimum path and a dictionary for repre-
-#        senting the map. 
+    def UCS(self, costFunction:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
+        """
+        In the way uniform cost search is implementend it depends upon a priority queue
+        for choosing among the adjacents with the minimum path and a dictionary for repre-
+        senting the map. 
         
-#        At the beggining, it may seem like they represent the exact same thing and that
-#        the only data structure needed is the dictionary that represent the map, but this
-#        is an erronous notion because the algorithm needs a way to be able to store the
-#        adjacents nodes of the current node.
+        At the beggining, it may seem like they represent the exact same thing and that
+        the only data structure needed is the dictionary that represent the map, but this
+        is an erronous notion because the algorithm needs a way to be able to store the
+        adjacents nodes of the current node.
 
-#        For this, the way found was storing them in the priority queue.
+        For this, the way found was storing them in the priority queue.
 
-#        If we were using the traditional Dijkstra, visited would be of the type
-#        dict[str,List[Tuple[int,str]]], but since this is the UCS the type is of 
-#        dict[str,Tuple[int,str]]. This happen because of two reasons:
+        If we were using the traditional Dijkstra, visited would be of the type
+        dict[str,List[Tuple[int,str]]], but since this is the UCS the type is of 
+        dict[str,Tuple[int,str]]. This happen because of two reasons:
 
-#        1. In this variation only the relaxed neighbours are appended into the priority
-#        Queue
-#        2. The cost between the `current` and `adj` is stored in the `adj`, not in the 
-#        `current`, so, when adding elements in the `visited`, this does not generates
-#        repeated keys.   
+        1. In this variation only the relaxed neighbours are appended into the priority
+        Queue
+        2. The cost between the `current` and `adj` is stored in the `adj`, not in the 
+        `current`, so, when adding elements in the `visited`, this does not generates
+        repeated keys.   
+        """
         priorityQueue = [(0,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
         visited = {self.origin:(0,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
         #stepsTaken = 0
@@ -150,13 +125,27 @@ class Finder:
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
                     heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
                     visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+                    
+    def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
+        heuristicValueOrigin = heuristicFun(self.origin)
 
-
-
-    def greedySearch(self, costFun, heuristicFun):#self, costFun:Callable[None], heuristicFun:Callable[Tuple[int,int]]):
-        #somente se costFun.__name__ == C3 || == C4 então self.totalSteps setá incrementado
-        pass
-
+        priorityQueue = [(heuristicValueOrigin,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
+        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
+        #stepsTaken = 0
+        while priorityQueue:
+            currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
+            if currentNode == self.destiny :
+                #The total cost is returned along with the way from the source to the destination
+                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
+            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
+            #relaxamento
+            neighbours = self.__getNeighbours(currentNode)
+            for neighbour in neighbours:
+                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1) + heuristicFun(neighbour)
+                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
+                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
+                    visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+                
     #methods related to moviment
     def __goDown(self, position:Tuple[int,int]) -> Tuple[int,int]:
         return (position[0], position[1]-1)
@@ -248,6 +237,10 @@ class Finder:
 def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     try:
+
+        b,c = a.runPathFiding("Astar","C4","manhatamHeuristic")
+        print(" ")
+        
         b,c = a.greedy(Heuristic.EUCLIDIAN)
         print(b)
         print(c)
