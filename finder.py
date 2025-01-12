@@ -233,7 +233,7 @@ def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     try:
 
-        b,c = a.runPathFiding("greedy","C4","manhatamHeuristic")
+        b,c = a.runPathFiding("greedy","None","manhatamHeuristic")
         print(" ")
         
         b,c = a.BFS("C1")
