@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jan 12 15:35:07 2025
+
+@author: Just_
+"""
+
 from typing import *
 import math
 import heapq
@@ -41,7 +48,7 @@ class Finder:
                 
     def runPathFiding(self, pathFidingAlgo:str, costFun:str, heuristicFun:str="None", is2print=True):
         pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
-        totalCost, path =  pathFidingAlgo(getattr(self,costFun), getattr(self,heuristicFun,None))
+        totalCost, path =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
         if is2print:
             self.__showResult(totalCost,path)
         return (totalCost,path)
@@ -233,9 +240,10 @@ def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     try:
 
-        b,c = a.runPathFiding("greedy","None","manhatamHeuristic")
+        b,c = a.runPathFiding("greedy","C","manhatamHeuristic")
         print(" ")
         
+
         b,c = a.BFS("C1")
         print(b)
         print(c)
@@ -255,5 +263,4 @@ casos de testes
     Portanto, antes de fazer o pop do dicionário, é necessário observar se o nódulo
     que no qual o pop foi feito é adjacente ao currentNode.
 """
-
 
