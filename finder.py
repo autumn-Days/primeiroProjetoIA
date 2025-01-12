@@ -233,13 +233,9 @@ def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     try:
 
-        b,c = a.runPathFiding("Astar","C4","manhatamHeuristic")
+        b,c = a.runPathFiding("greedy","C4","manhatamHeuristic")
         print(" ")
         
-        b,c = a.greedy(Heuristic.EUCLIDIAN)
-        print(b)
-        print(c)
-
         b,c = a.BFS("C1")
         print(b)
         print(c)
