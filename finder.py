@@ -87,6 +87,58 @@ class Finder:
                 newCost = currentCost + costFun(self.__isItVertical(currentNode,neighbour), currentSteps+1)
                 queue.append((newCost,neighbour,currentSteps+1))
                 travelled[neighbour] = (newCost, currentNode, currentSteps+1)
+
+
+    def DFS(self, costFunction:str, is2print=True):
+        totalCost, path = None, None
+
+        if costFunction == 'C1':
+            totalCost, path = self.__DFS(self.C1)
+        elif costFunction == 'C2':
+            totalCost, path = self.__DFS(self.C2)
+        elif costFunction == 'C3':
+            totalCost, path = self.__DFS(self.C3)
+        else:
+            totalCost, path = self.__DFS(self.C4)
+        if is2print:
+            self.__showResult(totalCost, path)
+        return (totalCost, path)
+
+    def __DFS(self, costFun: Callable) -> Tuple[int, List[Tuple[str, int, str]]]:
+
+        stack = [(0, self.origin, 0)]  # Pilha
+        travelled = {self.origin: (0, str(self.origin) + "'", 0)}
+        visited = set()
+
+
+        while stack:
+            currentCost, currentNode, currentSteps = stack.pop()
+
+            
+            if currentNode in visited:
+                continue
+            visited.add(currentNode)
+            self.__nodesVisited.append(currentNode)
+
+            self.__nodesVisited.append(currentNode)
+            
+            if currentNode == self.destiny:
+                print("destino encontrado")
+                return (currentCost, self.__pathTaken(travelled, self.destiny))
+            
+            neighbours = self.__getNeighbours(currentNode)
+            for neighbour in neighbours:
+                if neighbour not in visited:
+                    newCost = currentCost + costFun(
+                        self.__isItVertical(currentNode, neighbour), currentSteps + 1
+                    )
+                    stack.append((newCost, neighbour, currentSteps + 1))
+                    if neighbour not in travelled or newCost < travelled[neighbour][0]:
+                        travelled[neighbour] = (newCost, currentNode, currentSteps + 1)
+        
+        raise ValueError("caminho não encontrado!")
+    
+
                 
     def UCS(self, costFunction:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
@@ -238,10 +290,18 @@ class Finder:
 
 def main():
     a = Finder((0,0),(3,3),gridProportion=4)
+    x = Finder((0,0),(3,3),gridProportion=4)
     try:
 
         b,c = a.runPathFiding("greedy","C","manhatamHeuristic")
         print(" ")
+
+
+        print("===================")
+        b, c = x.DFS("C1")
+        print(b)
+        print(c)
+        print("===================")
         
     except TypeError:
         print("deu ruim")
@@ -259,4 +319,3 @@ casos de testes
     Portanto, antes de fazer o pop do dicionário, é necessário observar se o nódulo
     que no qual o pop foi feito é adjacente ao currentNode.
 """
-
