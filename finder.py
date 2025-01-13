@@ -243,10 +243,6 @@ def main():
         b,c = a.runPathFiding("greedy","C","manhatamHeuristic")
         print(" ")
         
-
-        b,c = a.BFS("C1")
-        print(b)
-        print(c)
     except TypeError:
         print("deu ruim")
     #a.tester()
