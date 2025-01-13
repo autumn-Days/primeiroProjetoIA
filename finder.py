@@ -25,34 +25,96 @@ class Finder:
         self.__nodesGenerated:List[Tuple[int,int]] = []
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
-    #algorithms self, costFun:Callable[None], is2print=True) -> Tuple[int,List[Tuple[str,int,str]]]
+    #return (currentCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost)
+    def runPathFiding(self, pathFidingAlgo:str, costFun:str, is2print=True):
+        pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
+        totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
+        if is2print:
+            if not isItHeuristic:
+                self.__showResult(totalCost,path)
+            else:
+                self.__showResult(totalCost,path,heuristicFun,pathCost,isItHeuristic)
+        return (totalCost,path)
+    
+    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None) -> None:
+        if heuristicType :
+            print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
+            print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
+        print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
+        print(f"steps from {path[0][0]} to {self.destiny} : {len(path)-1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+
+        for i in range(len(path)):
+            print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}")
+
+    """
+    Os próximos dois métodos dizem respeito aos algoritmos de busca heurísticos.
+    
+    A*:
+        
+    Cada nódulo (x,y) é representado pela estrutura: 
+                            `(f(n),(x,y),passos,g(n),h(n))`
+    É útil guardar os valores de g(n) pois, desta forma, é possível comparar o
+    custo total do caminho trilhado com os algoritmos de busca não informada.
+    
+    De forma semelhante, também é útil guardar h(n), pois desta forma é possível
+    obter o custo heurístico total ao final, o que útil para comparar o A* com 
+    o guloso posteriormente.
+    
+    Por último, é essencial guardar o f(n) pois ele é o elemento que será usado
+    pela heap mínima para selecionar o nódulo com o menor caminho entre o pai
+    e o filho.
+    
+    Greedy:
+        
+    A estrutura do nódulo (x,y) do guloso é basicamente a mesma que a do A*, mas,
+    como f(n) = h(n), omitisse o útlimo elemento da tupla. Assim, a sua estrutura
+    é:
+                            `(f(n),(x,y),passos,g(n))`
+    """
 
     def greedy(self, costFun:None, heuristic:Callable):
         """
-        A função de custo não será utilizada, será apenas para manter a uniformidade
-        entre as assinaturas das funções
+        Mesmo que o algoritmo guloso não utilize o custo do caminho, `costFun`
+        é passado como parâmetro para facilitar a comparação entre ele e os
+        algoritmos de busca não informados.
         """
         heuristicValueOrigin = heuristic(self.origin)
-        queue = [(heuristicValueOrigin,self.origin,0)]
-        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0)}
+        
+        queue = [(heuristicValueOrigin,self.origin,0,0)]
+        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0,0)}
 
         while queue:
-            currentCost, currentNode, currentSteps = heapq.heappop(queue)
+            currentCost, currentNode, currentSteps,pathCost = heapq.heappop(queue)
+            self.__nodesVisited.append(currentNode) #depois eu tenho que me lembrar de pôr isso antes da condição. Isso daqui explica pq eu não tive que subtrair 1 da quantidade de passos na função `pathTaken` para excluir a origem 
             if(currentNode == self.destiny):
-                return (currentCost, self.__pathTaken(visited,self.destiny))
-            self.__nodesVisited.append(currentNode)
+                return (currentCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,True)#f(n) = g(n), por isso currentCost é passado 2 vezes
             for neighbour in self.__getNeighbours(currentNode):
                 totalCost =  currentCost + heuristic(neighbour) #tem que somar com `currentCost`, se não o valor total será apresentado como "0" pq o custo heurístico do destino para o destino é zero
-                heapq.heappush(queue, (totalCost,neighbour,currentSteps+1))
-                visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+                pathCostNeighbour = costFun(self.__isItVertical(currentNode, neighbour),currentSteps+1)
                 
-    def runPathFiding(self, pathFidingAlgo:str, costFun:str, heuristicFun:str="None", is2print=True):
-        pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
-        totalCost, path =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
-        if is2print:
-            self.__showResult(totalCost,path)
-        return (totalCost,path)
-        
+                heapq.heappush(queue,(totalCost,neighbour,currentSteps+1,pathCostNeighbour))
+                visited[neighbour] = (totalCost,currentNode,currentSteps+1,pathCostNeighbour)
+
+    def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
+        heuristicValueOrigin = heuristicFun(self.origin)
+
+        priorityQueue = [(heuristicValueOrigin,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
+        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
+        #stepsTaken = 0
+        while priorityQueue:
+            currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
+            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
+            if currentNode == self.destiny :
+                #The total cost is returned along with the way from the source to the destination
+                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
+            #relaxamento
+            neighbours = self.__getNeighbours(currentNode)
+            for neighbour in neighbours:
+                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1) + heuristicFun(neighbour)
+                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
+                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
+                    visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+
     def BFS(self,costFun:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
         É necessário guardar o pai do nó `current` para fazer o `traceback`,
@@ -80,15 +142,14 @@ class Finder:
             currentCost, currentNode, currentSteps = queue.popleft()
             self.__nodesVisited.append(currentNode)
             if currentNode == self.destiny:
-                return (currentCost, self.__pathTaken(travelled,self.destiny))
+                return (currentCost, self.__pathTaken(travelled,self.destiny),None,None,None)
             #It adds the generated nodes into the queue
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
                 newCost = currentCost + costFun(self.__isItVertical(currentNode,neighbour), currentSteps+1)
                 queue.append((newCost,neighbour,currentSteps+1))
                 travelled[neighbour] = (newCost, currentNode, currentSteps+1)
-
-
+    
     def DFS(self, costFunction:str, is2print=True):
         totalCost, path = None, None
 
@@ -137,9 +198,7 @@ class Finder:
                         travelled[neighbour] = (newCost, currentNode, currentSteps + 1)
         
         raise ValueError("caminho não encontrado!")
-    
-
-                
+        
     def UCS(self, costFunction:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
         In the way uniform cost search is implementend it depends upon a priority queue
@@ -168,10 +227,10 @@ class Finder:
         #stepsTaken = 0
         while priorityQueue:
             currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
+            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
             if currentNode == self.destiny :
                 #The total cost is returned along with the way from the source to the destination
-                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
-            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
+                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny),None,None,None)
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
@@ -180,25 +239,6 @@ class Finder:
                     heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
                     visited[neighbour] = (totalCost,currentNode,currentSteps+1)
                     
-    def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
-        heuristicValueOrigin = heuristicFun(self.origin)
-
-        priorityQueue = [(heuristicValueOrigin,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
-        visited = {self.origin:(heuristicValueOrigin,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
-        #stepsTaken = 0
-        while priorityQueue:
-            currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
-            if currentNode == self.destiny :
-                #The total cost is returned along with the way from the source to the destination
-                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny))
-            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
-            #relaxamento
-            neighbours = self.__getNeighbours(currentNode)
-            for neighbour in neighbours:
-                totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1) + heuristicFun(neighbour)
-                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
-                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
-                    visited[neighbour] = (totalCost,currentNode,currentSteps+1)
                 
     #methods related to moviment
     def __goDown(self, position:Tuple[int,int]) -> Tuple[int,int]:
@@ -240,17 +280,7 @@ class Finder:
         x1,y1 = neighbour
         x2,y2 = destiny
         return abs(x1-x2) + abs(y1-y2)
-    
     #auxiliary methods
-    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]]) -> None:
-        print(f"Cost from {path[0][0]} to {self.destiny} : {totalCost}")
-        print(f"steps from {path[0][0]} to {self.destiny} : {len(path)}")
-
-        for i in range(len(path)):
-            print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}",end="")
-            if i != len(path)-1:
-                print(" --> ",end="")
-
     def __pathTaken(self, minSpanningTree:Dict[str,Tuple[int,str]], definitiveDestiny:str):
         pathTaken:List[Tuple[str,int,str]] = []
         
@@ -287,7 +317,7 @@ class Finder:
         #cost related atributes
         self.totalCost = 0
         self.totalSteps = 0
-
+        
 def main():
     a = Finder((0,0),(3,3),gridProportion=4)
     x = Finder((0,0),(3,3),gridProportion=4)
