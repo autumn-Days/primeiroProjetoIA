@@ -349,26 +349,24 @@ class Test():
             finder.origin = (x1,y1)
             finder.destiny = (x2,y2)
             self.BFS_DFS_Data(finder,i)
-            """
-            finder.resetAtributest()
-            self.UCS_DATA(finder)
-            finder.resetAtributes()
-            self.UCSData(finder)
-            finder.resetAtributes()
-            self.greedyData(finder)
-            finder.resetAtributes()
-            """
+            self.UCSData(finder,i)
+            self.AstarData(finder,i)
+            self.greedyData(finder,i)
             i += 1
-    def AstarData(self, finder:Finder):
+            
+    def AstarData(self, finder:Finder, timesRunned):
         heuristics = ["euclidianHeuristic","manhatamHeuristic"]
         costs = ["C1","C2","C3","C4"]
 
         for heuristic in heuristics:
             for cost in costs:
-                with open(f"Astar_{cost}_{heuristic}.txt","w") as file:    
+                openingType = self.__selectOpeningType2(timesRunned)
+                with open(f"Astar_{cost}_{heuristic}.txt",openingType) as file:    
                     with contextlib.redirect_stdout(file):
+                        print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
                         finder.runPathFiding("Astar",cost,heuristic)
-
+                        finder.resetSome()
+        print("ok")
             
     def BFS_DFS_Data(self,finder:Finder,timesRunned):
         dataStrucutureMethods = ["popleft","pop"]
@@ -383,36 +381,32 @@ class Test():
                             finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
                             finder.resetSome()
         print("ufa")
-    
-    def __selectOpeningType(self,fileName):
-        if (os.path.isfile(fileName)):
-            return "w"
-        else:
-            return "a"
-
-    def __selectOpeningType2(self,timesRunned:int):
-        if (timesRunned == 0):
-            return "w"
-        else:
-            return "a"
                 
-    def UCSData(self, finder:Finder):
+    def UCSData(self, finder:Finder,timesRunned):
         costs = ["C1","C2","C3","C4"]
         for cost in costs:
-            with open(f"{UCS}_{cost}.txt") as file:
+            openingType = self.__selectOpeningType2(timesRunned)
+            with open(f"UCS_{cost}.txt", openingType) as file:
                 with contextlib.redirect_stdout(file):
-                    finder.runPathFiding("UCS",cost,heuristic)    
+                    print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
+                    finder.runPathFiding("UCS",cost,"None")#None é o valor da heurística
+                    finder.resetSome()
+        print("aff")
                 
-    def greedyData(self, finder:Finder):
+    def greedyData(self, finder:Finder,timesRunned):
         heuristics = ["euclidianHeuristic","manhatamHeuristic"]
         costs = ["C1","C2","C3","C4"]
 
         for heuristic in heuristics:
             for cost in costs:
-                with open(f"{greedy}_{heuristic}_{cost}.txt") as file:
-                    with contextlib.redirect_stdout(file):                    
+                openingType = self.__selectOpeningType2(timesRunned)
+                with open(f"greedy_{heuristic}_{cost}.txt",openingType) as file:
+                    with contextlib.redirect_stdout(file):
+                        print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
                         finder.runPathFiding("greedy",cost,heuristic)
-
+                        finder.resetSome()
+        print("oi")
+                        
     def __generateRandomCoordinates(self):
         coordinates = []
         for i in range(50):
@@ -438,6 +432,18 @@ class Test():
                     coordinates = tuple(map(int,line.strip().split())) #coordinates = (x1,y1,x2,y2)
                     allCoordinates.append(coordinates)
         return allCoordinates
+
+    def __selectOpeningType(self,fileName):
+        if (os.path.isfile(fileName)):
+            return "w"
+        else:
+            return "a"
+
+    def __selectOpeningType2(self,timesRunned:int):
+        if (timesRunned == 0):
+            return "w"
+        else:
+            return "a"
 
 def main():
     a = Test()
