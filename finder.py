@@ -171,7 +171,6 @@ class Finder:
             
             self.__nodesVisited.append(currentNode)
             if currentNode == self.destiny:
-                o = 2
                 return (currentCost, self.__pathTaken(travelled,self.destiny),currentCost,None,None)
             #It adds the generated nodes into the queue
             neighbours = self.__getNeighbours(currentNode)
@@ -286,7 +285,7 @@ class Finder:
         return pathTaken
 
     def __getNeighbours(self,coord:Tuple[int,int]) -> List[Tuple[int,int]]:
-        neighboursBeta = [self.__goDown(coord), self.__goUp(coord), self.__goRight(coord), self.__goLeft(coord)]
+        neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
         #filter the invalid
         for i in range(len(neighboursBeta)):
             if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
@@ -447,6 +446,8 @@ class Test():
 
 def main():
     a = Test()
+    b = Finder()
+    
     a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
     #try:
     #    a = Finder((8,7),(30,30), gridProportion=30)
@@ -468,8 +469,71 @@ if __name__ == "__main__":
 """
 O código tá praticamente pronto. Só falta fazer os seguintes testes/revisões e ajustes antes de fazer o relatório
 
-{lista de coisas para conferir}
+1. Se o loop está salvando os outputs dentro dos arquivos certos
+2. Testar se a sobreescrição dos arquivos está funcionando, ou seja, se quando "i" == 0 o programa usa o método
+de overwrite ao invés do append (que é usado quando i != 0)
+3. Fazer com que o get neighbours só verifique se o nódulo está na lista de visitados quando o BFS/DFS for chamado
+4. Analisar o porquê do DFS estar com esse comportamento estranho
+    - Acho que é pq o DFS precisa que eu tire aquela condição do "se o nó já tiver sido gerado, pule"
+5. Analisar porque o guloso tá com aqueles custos heurísticos estranhos entre de um nó para outro
+6. Gerar as funções de movimento na ordem que o Samy quer de acordo com o documento dele: OK
 
-dps preciso conferir para ver se os dados estam sendo salvos nos arquivos certos msm,
-acho que estam.
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    OK
+7. verificar se o cálculo das heurísticas está certa
+    -Calcula na mão cada uma dessas coordenadas e depois confere:
+        (21,6) (7,4)
+            -Euclidiana:
+                -meu: 140
+                -retornado: 140
+            -Manhatam:
+                -meu:160
+                -retornado:160
+                    
+        (12,15) (19,9)
+            -Euclidiana:
+                -meu: 90
+                -ret: 90
+            -Manhatam:
+                -meu:130        
+                -retornado:130
+                
+        (11,17) (27,27)
+            -Euclidiana:
+                -meu: 180
+                -ret: 180
+            -Manhatam:
+                -meu: 260
+                -retornado: 260
+                    
+        (5,11) (4,23):            
+            -Euclidiana:
+                -meu:120
+                -ret:120
+            -Manhatam:
+                -meu: 130
+                -retornado:130
+
+        (13,22) (7,21):
+            -Euclidiana:
+                -meu:60
+                -ret:60
+            -Manhatam:
+                -meu: 70
+                -retornado: 70
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=            
+
+8. Revisar e analisar melhor se as coordenadas aleatórias estão sendo postas no x1,y1 e no x2,y2 como o esperado.
+9. Revisar cada algoritmo principalmente para ver se os argumentos que eles estão passando para os métodos auxiliares
+está certo mesmo  
+
+Coisas bobas a implementar:
+
+8. Testar as funções de custo    
+
+1. Salvar nos arquivos tbm a quantidade de nós gerados
+2. Também por no arquivo quais os nódulos que foram visitados (pra isso é só mudar `steps` para `visitados` e tirar aquele -1)
+    ATENÇÃO: DEPOIS QUE VOCÊ IMPLEMENTAR O 1&2 NÃO SE ESQUEÇA DE ATUALIZAR O RESET E O RESETSOME 
+3. Implementar a randomização da vizinhaça
+4. Implementar as bobagens do teste 5
 """
