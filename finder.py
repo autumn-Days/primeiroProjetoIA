@@ -173,7 +173,7 @@ class Finder:
             if currentNode == self.destiny:
                 return (currentCost, self.__pathTaken(travelled,self.destiny),currentCost,None,None)
             #It adds the generated nodes into the queue
-            neighbours = self.__getNeighbours(currentNode)
+            neighbours = self.__getNeighbours(currentNode,"DBFS")
             for neighbour in neighbours:
                 #para que não haja sobreescrita de chaves à medida que elas são geradas
                 if neighbour in self.__nodesGenerated:
@@ -284,13 +284,17 @@ class Finder:
         pathTaken.reverse()
         return pathTaken
 
-    def __getNeighbours(self,coord:Tuple[int,int]) -> List[Tuple[int,int]]:
+    def __getNeighbours(self,coord:Tuple[int,int],isItDBFS=None) -> List[Tuple[int,int]]:
         neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
         #filter the invalid
         for i in range(len(neighboursBeta)):
             if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
                 neighboursBeta[i] = None
-        return [node for node in neighboursBeta if ((node != None) and (not self.__wasItVisited(node)))] # existe a possibilidade da lista retornada estar vazia
+        if isItDBFS:
+            return [node for node in neighboursBeta if ((node != None) and (not self.__wasItVisited(node)))] # existe a possibilidade da lista retornada estar vazia
+        else:
+            return [node for node in neighboursBeta if (node != None)] # existe a possibilidade da lista retornada estar vazia
+
 
     def __wasItVisited(self, coord:Tuple[int,int]):
         return coord in self.__nodesVisited
@@ -350,7 +354,7 @@ class Test():
             self.BFS_DFS_Data(finder,i)
             self.UCSData(finder,i)
             self.AstarData(finder,i)
-            self.greedyData(finder,i)
+            #self.greedyData(finder,i) tô resolvendo umas coisas com esse ainda
             i += 1
             
     def AstarData(self, finder:Finder, timesRunned):
@@ -472,12 +476,23 @@ O código tá praticamente pronto. Só falta fazer os seguintes testes/revisões
 1. Se o loop está salvando os outputs dentro dos arquivos certos
 2. Testar se a sobreescrição dos arquivos está funcionando, ou seja, se quando "i" == 0 o programa usa o método
 de overwrite ao invés do append (que é usado quando i != 0)
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 3. Fazer com que o get neighbours só verifique se o nódulo está na lista de visitados quando o BFS/DFS for chamado
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 4. Analisar o porquê do DFS estar com esse comportamento estranho
     - Acho que é pq o DFS precisa que eu tire aquela condição do "se o nó já tiver sido gerado, pule"
-5. Analisar porque o guloso tá com aqueles custos heurísticos estranhos entre de um nó para outro
-6. Gerar as funções de movimento na ordem que o Samy quer de acordo com o documento dele: OK
 
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+5. Analisar porque o guloso tá com aqueles custos heurísticos estranhos entre de um nó para outro
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    OK
+6. Gerar as funções de movimento na ordem que o Samy quer de acordo com o documento dele
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     OK
 7. verificar se o cálculo das heurísticas está certa
