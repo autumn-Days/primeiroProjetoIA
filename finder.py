@@ -39,16 +39,12 @@ class Finder:
                 self.__showResult(totalCost,path)
             else:
                 self.__showResult(totalCost,path,isItHeuristic,pathCost,heuristicCost)
-            #elif pathFidingAlgo == "greedy":
-            #    self.__showResult(totalCost,path,isItHeuristic,pathCost,totalCost)
-            #elif pathFidingAlgo == "Astar":
-            #    self.__showResult(totalCost,path,isItHeuristic,pathCost,heuristicCost)
         return (totalCost,path)
     
     def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None,is2printCost=False) -> None:
         if isItHeuristic :
             print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
-            print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
+            #print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
         print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
         print(f"steps from {path[0][0]} to {self.destiny} : {len(path)-1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
 
@@ -83,6 +79,7 @@ class Finder:
     como f(n) = h(n), omitisse o útlimo elemento da tupla. Assim, a sua estrutura
     é:
                             `(f(n),(x,y),passos,g(n))`
+                            `(h(n),(x,y),passos,g(n),f(n))`
     """
 
     def greedy(self, costFun:Callable, heuristic:Callable):
@@ -93,24 +90,29 @@ class Finder:
         """
         IT_IS_HEURISTIC = True
         
-        queue = [(0,self.origin,0,0)]
-        visited = {self.origin:(0,str(self.origin)+"'",0,0)}
+        queue = [(0,self.origin,0,0,0)]
+        visited = {self.origin:(0,str(self.origin)+"'",0,0,0)}
 
         while queue:
-            currentCost, currentNode, currentSteps,pathCost = heapq.heappop(queue)
+            currentCost, currentNode, currentSteps,pathCost,totalCost = heapq.heappop(queue)
             self.__nodesVisited.append(currentNode) #depois eu tenho que me lembrar de pôr isso antes da condição. Isso daqui explica pq eu não tive que subtrair 1 da quantidade de passos na função `pathTaken` para excluir a origem 
             if(currentNode == self.destiny):
                 #totalCost,path,pathCost,heuristicCost,isItHeuristic
-                return (currentCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)#f(n) = g(n), por isso currentCost é passado 2 vezes
-            for neighbour in self.__getNeighbours(currentNode):
+                return (totalCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)#f(n) = g(n), por isso currentCost é passado 2 vezes
+            for neighbour in self.__getNeighbours(currentNode,"greedy"):
                 
-                if neighbour in self.__nodesGenerated:
-                    continue
+                
+                #if neighbour in self.__nodesGenerated:
+                #    continue
                
-                totalCost =  currentCost + heuristic(neighbour) #tem que somar com `currentCost`, se não o valor total será apresentado como "0" pq o custo heurístico do destino para o destino é zero
-                pathCostNeighbour = pathCost + costFun(self.__isItVertical(currentNode, neighbour),currentSteps+1)                
-                heapq.heappush(queue,(totalCost,neighbour,currentSteps+1,pathCostNeighbour))
-                visited[neighbour] = (totalCost,currentNode,currentSteps+1,pathCostNeighbour)
+                heuristicNeighbour = heuristic(neighbour)
+                costNeighbour = costFun(self.__isItVertical(currentNode, neighbour),currentSteps+1)
+                
+                neighbourTotalCost = totalCost + costNeighbour + heuristicNeighbour #só serve para comparar com o A*   
+                pathCostNeighbour = pathCost + costNeighbour# O custo do path em sí, sem comtar a heurítics    
+                
+                heapq.heappush(queue,(heuristicNeighbour,neighbour,currentSteps+1,pathCostNeighbour,neighbourTotalCost))
+                visited[neighbour] = (heuristicNeighbour,currentNode,currentSteps+1,pathCostNeighbour,neighbourTotalCost)
                 
                 self.__nodesGenerated.append(neighbour) #tem que adicionar a raiz
     def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
@@ -284,13 +286,13 @@ class Finder:
         pathTaken.reverse()
         return pathTaken
 
-    def __getNeighbours(self,coord:Tuple[int,int],isItDBFS=None) -> List[Tuple[int,int]]:
+    def __getNeighbours(self,coord:Tuple[int,int],isItDBFS_or_greedy=None) -> List[Tuple[int,int]]:
         neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
         #filter the invalid
         for i in range(len(neighboursBeta)):
             if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
                 neighboursBeta[i] = None
-        if isItDBFS:
+        if isItDBFS_or_greedy:
             return [node for node in neighboursBeta if ((node != None) and (not self.__wasItVisited(node)))] # existe a possibilidade da lista retornada estar vazia
         else:
             return [node for node in neighboursBeta if (node != None)] # existe a possibilidade da lista retornada estar vazia
@@ -354,7 +356,7 @@ class Test():
             self.BFS_DFS_Data(finder,i)
             self.UCSData(finder,i)
             self.AstarData(finder,i)
-            #self.greedyData(finder,i) tô resolvendo umas coisas com esse ainda
+            self.greedyData(finder,i) #tô resolvendo umas coisas com esse ainda
             i += 1
             
     def AstarData(self, finder:Finder, timesRunned):
@@ -450,7 +452,8 @@ class Test():
 
 def main():
     a = Test()
-    b = Finder()
+    b = Finder((0,0),(2,2),gridProportion=2)
+    b.runPathFiding("greedy", "C1", "euclidianHeuristic")
     
     a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
     #try:
