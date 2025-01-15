@@ -11,6 +11,7 @@ import heapq
 from collections import deque
 from random import randint
 import contextlib #serve para redirecionar o output do terminal para um arquivo
+import os #biblioteca usada para verificar se um arquivo já está no diretório do projeto
 
 class Finder:
     def __init__(self, origin:Tuple[int,int]=None, destiny:Tuple[int, int]=None, gridProportion=30) -> None:
@@ -27,9 +28,12 @@ class Finder:
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
     #return (currentCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost)
-    def runPathFiding(self, pathFidingAlgo:str, costFun:str,heuristicFun:Callable=None, is2print=True):
+    def runPathFiding(self, pathFidingAlgo:str, costFun:str,heuristicFun:Callable=None,popingMethod=None, is2print=True):
         pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
-        totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
+        if pathFidingAlgo.__name__ == "D_BFS":
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), popingMethod)
+        else:
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
         if is2print:
             if not isItHeuristic:
                 self.__showResult(totalCost,path)
@@ -41,16 +45,20 @@ class Finder:
             #    self.__showResult(totalCost,path,isItHeuristic,pathCost,heuristicCost)
         return (totalCost,path)
     
-    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None) -> None:
+    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None,is2printCost=False) -> None:
         if isItHeuristic :
             print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
             print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
         print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
         print(f"steps from {path[0][0]} to {self.destiny} : {len(path)-1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
 
-        for i in range(len(path)):
-            print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}")
-
+        if (is2printCost):
+            for i in range(len(path)):
+                print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}")
+                
+        else:
+            for i in range(len(path)):
+                print(f"{path[i][0]}-->{path[i][2]}")
     """
     Os próximos dois métodos dizem respeito aos algoritmos de busca heurísticos.
     
@@ -159,13 +167,12 @@ class Finder:
                      
         travelled = {self.origin: (0,str(self.origin)+"'",0)}       
         while queue:
-            if i%10 == 0:
-                print("oi")
-            currentCost, currentNode, currentSteps = getattr(queue,popingMethod) #usa `pop` para pilha e `popleft` para fila
+            currentCost, currentNode, currentSteps = getattr(queue,popingMethod)() #usa `pop` para pilha e `popleft` para fila
             
             self.__nodesVisited.append(currentNode)
             if currentNode == self.destiny:
-                return (currentCost, self.__pathTaken(travelled,self.destiny),None,None,None)
+                o = 2
+                return (currentCost, self.__pathTaken(travelled,self.destiny),currentCost,None,None)
             #It adds the generated nodes into the queue
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
@@ -292,7 +299,7 @@ class Finder:
     def __isItVertical(self, currentNode:Tuple[int,int], neighbour:Tuple[int,int]):
         return abs(currentNode[1] - neighbour[1]) > 0
 
-"""
+    """
         #atributes for the coordinates
         self.origin = origin
         self.destiny = destiny
@@ -305,9 +312,9 @@ class Finder:
         self.__nodesGenerated:List[Tuple[int,int]] = []
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
-"""
+    """
 
-    def reset(self):
+    def resetAll(self):
         self.origin = None
         self.destiny = None
         self.amountNodesGenerated:int = 0
@@ -317,28 +324,41 @@ class Finder:
         self.totalSteps = 0
         self.__nodesGenerated:List[Tuple[int,int]] = []
         self.__nodesVisited: List[Tuple[int,int]] = []
+        
+    def resetSome(self):
+        self.__nodesGenerated:List[Tuple[int,int]] = []
+        self.__nodesVisited: List[Tuple[int,int]] = []        
+        self.totalCost = 0
+        self.totalSteps = 0
+        self.amountNodesGenerated:int = 0
+        self.amountNodesVisited:int = 0
     
 class Test():
     def generateData(self, is2GenerateNewCoordinates:bool, fileCoordinates=None):
         randomCoordinates = []
-        if generateNewCoordinates:
+        if is2GenerateNewCoordinates:
             randomCoordinates = self.__generateRandomCoordinates()
         else:
             randomCoordinates = self.__readCoordinateFile(fileCoordinate)
         finder = Finder()
         
+        i = 0
+        
         for coord in randomCoordinates:
             x1,y1,x2,y2 = coord
             finder.origin = (x1,y1)
             finder.destiny = (x2,y2)
-            self.BFS_DFS_DATA(finder)
-            finder.reset()
+            self.BFS_DFS_Data(finder,i)
+            """
+            finder.resetAtributest()
             self.UCS_DATA(finder)
-            finder.reset()
+            finder.resetAtributes()
             self.UCSData(finder)
-            finder.reset()
+            finder.resetAtributes()
             self.greedyData(finder)
-            finder.reset()
+            finder.resetAtributes()
+            """
+            i += 1
     def AstarData(self, finder:Finder):
         heuristics = ["euclidianHeuristic","manhatamHeuristic"]
         costs = ["C1","C2","C3","C4"]
@@ -350,19 +370,32 @@ class Test():
                         finder.runPathFiding("Astar",cost,heuristic)
 
             
-    def BFS_DFS_Data(self,finder:Finder):
-        algos = ["BFS","DFS"]
+    def BFS_DFS_Data(self,finder:Finder,timesRunned):
+        dataStrucutureMethods = ["popleft","pop"]
         costs = ["C1","C2","C3","C4"]
 
-        for algo in algos:
+        for dataStructure in dataStrucutureMethods:
             for cost in costs:
-                with open(f"{algo}_{cost}.txt","w") as file:
+                openingType = self.__selectOpeningType2(timesRunned)
+                with open(f"{dataStructure}_{cost}.txt",openingType) as file:
                     with contextlib.redirect_stdout(file):
-                        if algo == "BFS":
-                            finder.runPathFiding(algo, cost,"popleft")
-                        else:
-                            finder.runPathFiding(algo, cost,"pop")
-        
+                            print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
+                            finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
+                            finder.resetSome()
+        print("ufa")
+    
+    def __selectOpeningType(self,fileName):
+        if (os.path.isfile(fileName)):
+            return "w"
+        else:
+            return "a"
+
+    def __selectOpeningType2(self,timesRunned:int):
+        if (timesRunned == 0):
+            return "w"
+        else:
+            return "a"
+                
     def UCSData(self, finder:Finder):
         costs = ["C1","C2","C3","C4"]
         for cost in costs:
@@ -402,18 +435,26 @@ class Test():
         with open(file,"r"):
             for line in file:
                 if line != "\n":
-                    coordinates = tuple(map(int(line.strip().split()))) #coordinates = (x1,y1,x2,y2)
+                    coordinates = tuple(map(int,line.strip().split())) #coordinates = (x1,y1,x2,y2)
                     allCoordinates.append(coordinates)
         return allCoordinates
 
 def main():
-    a = Finder((0,0),(30,30),gridProportion=30)
-    try:
-        b,c = a.runPathFiding("UCS","C1","manhatamHeuristic")
-        #b,c = a.BFS("C1")
-        print(" ")
-    except TypeError:
-        print("deu ruim")
+    a = Test()
+    a.generateData(is2GenerateNewCoordinates=True,fileCoordinates="coordinates.txt")
+    #try:
+    #    a = Finder((8,7),(30,30), gridProportion=30)
+    #   a.runPathFiding("D_BFS", "C2", popingMethod="popleft")
+    #except:
+    #    print("oi")
+    
+    #a = Finder((21,12),(2,7),gridProportion=30)
+    #try:
+    #    b,c = a.runPathFiding("UCS","C1","manhatamHeuristic")
+    #    #b,c = a.BFS("C1")
+        #print(" ")
+    #except TypeError:
+    #    print("deu ruim")
     #a.tester()
 if __name__ == "__main__":
     main()
@@ -425,4 +466,7 @@ algoritmos que demoram muito do (0,0) para (8,8):
 
 BFS
 greedy
+
+dps preciso conferir para ver se os dados estam sendo salvos nos arquivos certos msm,
+acho que estam.
 """
