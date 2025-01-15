@@ -339,7 +339,7 @@ class Test():
         if is2GenerateNewCoordinates:
             randomCoordinates = self.__generateRandomCoordinates()
         else:
-            randomCoordinates = self.__readCoordinateFile(fileCoordinate)
+            randomCoordinates = self.__readCoordinatesFromFile(fileCoordinates)
         finder = Finder()
         
         i = 0
@@ -424,9 +424,9 @@ class Test():
         return coordinates
 
 
-    def __readCoordinateFile(self, file):
+    def __readCoordinatesFromFile(self, file):
         allCoordinates = []
-        with open(file,"r"):
+        with open(file,"r") as file:
             for line in file:
                 if line != "\n":
                     coordinates = tuple(map(int,line.strip().split())) #coordinates = (x1,y1,x2,y2)
@@ -447,7 +447,7 @@ class Test():
 
 def main():
     a = Test()
-    a.generateData(is2GenerateNewCoordinates=True,fileCoordinates="coordinates.txt")
+    a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
     #try:
     #    a = Finder((8,7),(30,30), gridProportion=30)
     #   a.runPathFiding("D_BFS", "C2", popingMethod="popleft")
@@ -466,12 +466,9 @@ if __name__ == "__main__":
     main()
 
 """
-algoritmos que demoram muito do (0,0) para (8,8):
-    
-    a partir da 12° já demonstra falhas
+O código tá praticamente pronto. Só falta fazer os seguintes testes/revisões e ajustes antes de fazer o relatório
 
-BFS
-greedy
+{lista de coisas para conferir}
 
 dps preciso conferir para ver se os dados estam sendo salvos nos arquivos certos msm,
 acho que estam.
