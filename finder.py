@@ -43,11 +43,11 @@ class Finder:
     
     def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None,is2printCost=False) -> None:
         if isItHeuristic :
-            print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
+            print(f"    Path cost from {path[0][0]} to {self.destiny}: {pathCost}◇    ")
             #print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
-        print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
-        print(f"Visited from {path[0][0]} to {self.destiny} : {len(path)+1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
-        print(f"Generated from {path[0][0]} to {self.destiny} : {self.amountNodesGenerated}")
+        print(f"    Total cost from {path[0][0]} to {self.destiny} : {totalCost}•    ")#essas bolas que eu pôs agora é para ficar mais fácil de selecionar todas as partes iguais no vscode para analisar
+        print(f"    Visited from {path[0][0]} to {self.destiny} : {len(path)+1}●    ") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+        print(f"    Generated from {path[0][0]} to {self.destiny} : {self.amountNodesGenerated}◦    ")
 
         if (is2printCost):
             for i in range(len(path)):
@@ -455,7 +455,7 @@ class Test():
 
 def main():
     
-    #b = Finder((0,0),(30,30),gridProportion=30)
+    #b = Finder((0,0),(0,5),gridProportion=5)
     
     #b.runPathFiding("D_BFS", "C1", popingMethod="pop")
     #b.runPathFiding("Astar", "C1", "euclidianHeuristic")
