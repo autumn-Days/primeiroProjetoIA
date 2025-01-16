@@ -46,7 +46,8 @@ class Finder:
             print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
             #print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
         print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
-        print(f"steps from {path[0][0]} to {self.destiny} : {len(path)-1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+        print(f"Visited from {path[0][0]} to {self.destiny} : {len(path)}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+        print(f"Generated from {path[0][0]} to {self.destiny} : {self.amountNodesGenerated}")
 
         if (is2printCost):
             for i in range(len(path)):
@@ -100,10 +101,7 @@ class Finder:
                 #totalCost,path,pathCost,heuristicCost,isItHeuristic
                 return (totalCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)#f(n) = g(n), por isso currentCost é passado 2 vezes
             for neighbour in self.__getNeighbours(currentNode,"greedy"):
-                
-                
-                #if neighbour in self.__nodesGenerated:
-                #    continue
+                self.amountNodesGenerated += 1
                
                 heuristicNeighbour = heuristic(neighbour)
                 costNeighbour = costFun(self.__isItVertical(currentNode, neighbour),currentSteps+1)
@@ -114,7 +112,7 @@ class Finder:
                 heapq.heappush(queue,(heuristicNeighbour,neighbour,currentSteps+1,pathCostNeighbour,neighbourTotalCost))
                 visited[neighbour] = (heuristicNeighbour,currentNode,currentSteps+1,pathCostNeighbour,neighbourTotalCost)
                 
-                self.__nodesGenerated.append(neighbour) #tem que adicionar a raiz
+                #self.__nodesGenerated.append(neighbour) #comentei essa linha, dps vejo se era importante
     def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
         IT_IS_HEURISTIC = True
         
@@ -132,6 +130,8 @@ class Finder:
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
+                self.amountNodesGenerated += 1
+                
                 pathValue2neighbour = costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1)
                 heuristicValue2neighbour = heuristicFun(neighbour)
                 
@@ -177,7 +177,8 @@ class Finder:
             #It adds the generated nodes into the queue
             neighbours = self.__getNeighbours(currentNode,"DBFS")
             for neighbour in neighbours:
-                #para que não haja sobreescrita de chaves à medida que elas são geradas
+                self.amountNodesGenerated += 1
+                #para que o DFS não entre em loop infinito e para que o BFS poupe tempo de processamento
                 if neighbour in self.__nodesGenerated:
                     continue
                 newCost = currentCost + costFun(self.__isItVertical(currentNode,neighbour), currentSteps+1)
@@ -223,6 +224,7 @@ class Finder:
             #relaxamento
             neighbours = self.__getNeighbours(currentNode)
             for neighbour in neighbours:
+                self.amountNodesGenerated += 1
                 totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1)
                 if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
                     heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
@@ -250,11 +252,11 @@ class Finder:
     def C3(self, isVertical:bool, amountSteps) -> None:
         if isVertical:
             return 10
-        return 10 + (abs((5-amountSteps%6)))
+        return 10 + (abs(5-amountSteps)%6)
     def C4(self, isVertical:bool, amountSteps) -> None:
         if isVertical:
             return 10
-        return 5 + (abs((10-amountSteps%11)))
+        return 5 + (abs(10-amountSteps)%11)
 
     #methods related to heuristics
     def euclidianHeuristic(self, neighbour:Tuple[int,int]) -> int:
@@ -285,7 +287,7 @@ class Finder:
         
         pathTaken.reverse()
         return pathTaken
-
+#
     def __getNeighbours(self,coord:Tuple[int,int],isItDBFS_or_greedy=None) -> List[Tuple[int,int]]:
         neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
         #filter the invalid
@@ -322,13 +324,7 @@ class Finder:
     def resetAll(self):
         self.origin = None
         self.destiny = None
-        self.amountNodesGenerated:int = 0
-        self.amountNodesVisited:int = 0
-        #cost related atributes
-        self.totalCost = 0
-        self.totalSteps = 0
-        self.__nodesGenerated:List[Tuple[int,int]] = []
-        self.__nodesVisited: List[Tuple[int,int]] = []
+        self.resetSome()
         
     def resetSome(self):
         self.__nodesGenerated:List[Tuple[int,int]] = []
@@ -377,13 +373,20 @@ class Test():
         dataStrucutureMethods = ["popleft","pop"]
         costs = ["C1","C2","C3","C4"]
 
-        for dataStructure in dataStrucutureMethods:
+        for dataStructureMethod in dataStrucutureMethods:
             for cost in costs:
                 openingType = self.__selectOpeningType2(timesRunned)
-                with open(f"{dataStructure}_{cost}.txt",openingType) as file:
+                
+                fileName = ""
+                if dataStructureMethod == "pop":
+                    fileName = f"DFS_{cost}.txt"
+                elif dataStructureMethod == "popleft":
+                    fileName = f"BFS_{cost}.txt"
+                
+                with open(fileName,openingType) as file:
                     with contextlib.redirect_stdout(file):
                             print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                            finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
+                            finder.runPathFiding("D_BFS",cost,popingMethod=dataStructureMethod)
                             finder.resetSome()
         print("ufa")
                 
@@ -423,7 +426,7 @@ class Test():
                 coordinates.append((x1,y1,x2,y2))
                 break
         
-        with open("coordinates.txt","w") as file:
+        with open("randomCoordinates.txt","w") as file:
             for coord in coordinates:
                 file.write(f"{coord[0]} {coord[1]} {coord[2]} {coord[3]}\n")
         return coordinates
@@ -451,11 +454,27 @@ class Test():
             return "a"
 
 def main():
-    a = Test()
-    b = Finder((0,0),(2,2),gridProportion=2)
-    b.runPathFiding("greedy", "C1", "euclidianHeuristic")
+    #a = Test()
+    #a.generateData(is2GenerateNewCoordinates=True) não descomente isso !
     
-    a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
+    #b = Finder((1,1),(3,3),gridProportion=3)
+    
+    #b.runPathFiding("D_BFS", "C1", popingMethod="pop")
+    #b.runPathFiding("Astar", "C1", "euclidianHeuristic")
+    #b.runPathFiding("UCS", "C1")
+    
+    c = Test()
+    c.generateData(is2GenerateNewCoordinates=False,fileCoordinates = "coordinates.txt")
+    
+    
+    #finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
+
+    #a,c = b.runPathFiding("D_BFS", "C1",popingMethod="popleft")
+    #a,c = b.runPathFid
+    #b.runPathFiding(pathFidingAlgo, costFun)
+    
+    
+    #a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
     #try:
     #    a = Finder((8,7),(30,30), gridProportion=30)
     #   a.runPathFiding("D_BFS", "C2", popingMethod="popleft")
@@ -476,21 +495,25 @@ if __name__ == "__main__":
 """
 O código tá praticamente pronto. Só falta fazer os seguintes testes/revisões e ajustes antes de fazer o relatório
 
+OK
 1. Se o loop está salvando os outputs dentro dos arquivos certos
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ok
 2. Testar se a sobreescrição dos arquivos está funcionando, ou seja, se quando "i" == 0 o programa usa o método
 de overwrite ao invés do append (que é usado quando i != 0)
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
+ok
 3. Fazer com que o get neighbours só verifique se o nódulo está na lista de visitados quando o BFS/DFS for chamado
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
+ok
 4. Analisar o porquê do DFS estar com esse comportamento estranho
     - Acho que é pq o DFS precisa que eu tire aquela condição do "se o nó já tiver sido gerado, pule"
-
+        -Não era isso não, tá certo assim msm
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
+Ok
 5. Analisar porque o guloso tá com aqueles custos heurísticos estranhos entre de um nó para outro
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -539,19 +562,30 @@ de overwrite ao invés do append (que é usado quando i != 0)
             -Manhatam:
                 -meu: 70
                 -retornado: 70
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+OK
+- 8. Testar as funções de custo  
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=            
-
+OK
 8. Revisar e analisar melhor se as coordenadas aleatórias estão sendo postas no x1,y1 e no x2,y2 como o esperado.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Já revisei demais, deve tá certo
+
 9. Revisar cada algoritmo principalmente para ver se os argumentos que eles estão passando para os métodos auxiliares
-está certo mesmo  
+está certo mesmo.
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Coisas bobas a implementar:
-
-8. Testar as funções de custo    
-
+Coisas bobas a implementar:  
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+OK
 1. Salvar nos arquivos tbm a quantidade de nós gerados
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+OK
 2. Também por no arquivo quais os nódulos que foram visitados (pra isso é só mudar `steps` para `visitados` e tirar aquele -1)
     ATENÇÃO: DEPOIS QUE VOCÊ IMPLEMENTAR O 1&2 NÃO SE ESQUEÇA DE ATUALIZAR O RESET E O RESETSOME 
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 3. Implementar a randomização da vizinhaça
 4. Implementar as bobagens do teste 5
 """
