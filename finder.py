@@ -46,7 +46,7 @@ class Finder:
             print(f"Path cost from {path[0][0]} to {self.destiny}: {pathCost}")
             #print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
         print(f"Total cost from {path[0][0]} to {self.destiny} : {totalCost}")
-        print(f"Visited from {path[0][0]} to {self.destiny} : {len(path)}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+        print(f"Visited from {path[0][0]} to {self.destiny} : {len(path)+1}") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
         print(f"Generated from {path[0][0]} to {self.destiny} : {self.amountNodesGenerated}")
 
         if (is2printCost):
@@ -179,7 +179,7 @@ class Finder:
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 #para que o DFS não entre em loop infinito e para que o BFS poupe tempo de processamento
-                if neighbour in self.__nodesGenerated:
+                if ((popingMethod == "popleft") and (neighbour in self.__nodesGenerated)):
                     continue
                 newCost = currentCost + costFun(self.__isItVertical(currentNode,neighbour), currentSteps+1)
                 queue.append((newCost,neighbour,currentSteps+1))
@@ -454,10 +454,8 @@ class Test():
             return "a"
 
 def main():
-    #a = Test()
-    #a.generateData(is2GenerateNewCoordinates=True) não descomente isso !
     
-    #b = Finder((1,1),(3,3),gridProportion=3)
+    #b = Finder((0,0),(30,30),gridProportion=30)
     
     #b.runPathFiding("D_BFS", "C1", popingMethod="pop")
     #b.runPathFiding("Astar", "C1", "euclidianHeuristic")
