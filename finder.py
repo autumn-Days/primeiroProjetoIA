@@ -9,7 +9,7 @@ from typing import *
 import math
 import heapq
 from collections import deque
-from random import randint
+import random
 import contextlib #serve para redirecionar o output do terminal para um arquivo
 import os #biblioteca usada para verificar se um arquivo já está no diretório do projeto
 
@@ -27,13 +27,13 @@ class Finder:
         self.__nodesGenerated:List[Tuple[int,int]] = []
         self.__nodesVisited: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
-    #return (currentCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost)
-    def runPathFiding(self, pathFidingAlgo:str, costFun:str,heuristicFun:Callable=None,popingMethod=None, is2print=True):
+
+    def runPathFiding(self, pathFidingAlgo:str, costFun:str,heuristicFun:Callable=None,popingMethod=None, is2print=True,is2shuffle=False):
         pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
         if pathFidingAlgo.__name__ == "D_BFS":
-            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), popingMethod)
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, popingMethod) #O terceiro parâmetro é o is2shuffle
         else:
-            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), getattr(self,heuristicFun,None))
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, getattr(self,heuristicFun,None)) #o terceiro parametro agr é o is2shuffle
         if is2print:
             if not isItHeuristic:
                 self.__showResult(totalCost,path)
@@ -83,7 +83,12 @@ class Finder:
                             `(h(n),(x,y),passos,g(n),f(n))`
     """
 
-    def greedy(self, costFun:Callable, heuristic:Callable):
+    def getNeighbours(self, currentNode, is2shuffle, algoName=None):
+        if algoName:
+            return self.__getNeighbours(currentNode, is2shuffle, algoName)
+        return self.__getNeighbours(currentNode, is2shuffle)
+
+    def greedy(self, costFun:Callable,is2shuffle:bool, heuristic:Callable):
         """
         Mesmo que o algoritmo guloso não utilize o custo do caminho, `costFun`
         é passado como parâmetro para facilitar a comparação entre ele e os
@@ -100,7 +105,8 @@ class Finder:
             if(currentNode == self.destiny):
                 #totalCost,path,pathCost,heuristicCost,isItHeuristic
                 return (totalCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)#f(n) = g(n), por isso currentCost é passado 2 vezes
-            for neighbour in self.__getNeighbours(currentNode,"greedy"):
+            
+            for neighbour in self.getNeighbours(currentNode,is2shuffle,"greedy"):
                 self.amountNodesGenerated += 1
                
                 heuristicNeighbour = heuristic(neighbour)
@@ -113,7 +119,7 @@ class Finder:
                 visited[neighbour] = (heuristicNeighbour,currentNode,currentSteps+1,pathCostNeighbour,neighbourTotalCost)
                 
                 #self.__nodesGenerated.append(neighbour) #comentei essa linha, dps vejo se era importante
-    def Astar(self, costFunction:Callable, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
+    def Astar(self, costFunction:Callable, is2shuffle:bool, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
         IT_IS_HEURISTIC = True
         
 
@@ -128,7 +134,7 @@ class Finder:
                 #totalCost,path,pathCost,heuristicCost,isItHeuristic
                 return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny),pathCost,heuristicCost,IT_IS_HEURISTIC)
             #relaxamento
-            neighbours = self.__getNeighbours(currentNode)
+            neighbours = self.getNeighbours(currentNode,is2shuffle)#self.__getNeighbours(currentNode)
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 
@@ -143,7 +149,7 @@ class Finder:
                     heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1,newPathCost,newHeuristicCost))
                     visited[neighbour] = (totalCost,currentNode,currentSteps+1,newPathCost,newHeuristicCost)
 
-    def D_BFS(self,costFun:Callable,popingMethod:str,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
+    def D_BFS(self,costFun:Callable, is2shuffle:bool, popingMethod:str, heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
         É necessário guardar o pai do nó `current` para fazer o `traceback`,
         a posição de cada nó gerado (obviamente) e o custo dele até o seu pai,
@@ -175,7 +181,7 @@ class Finder:
             if currentNode == self.destiny:
                 return (currentCost, self.__pathTaken(travelled,self.destiny),currentCost,None,None)
             #It adds the generated nodes into the queue
-            neighbours = self.__getNeighbours(currentNode,"DBFS")
+            neighbours = self.getNeighbours(currentNode, is2shuffle, "DBFS")
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 #para que o DFS não entre em loop infinito e para que o BFS poupe tempo de processamento
@@ -189,7 +195,7 @@ class Finder:
 
 
                 
-    def UCS(self, costFunction:Callable,heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
+    def UCS(self, costFunction:Callable, is2shuffle:bool, heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
         In the way uniform cost search is implementend it depends upon a priority queue
         for choosing among the adjacents with the minimum path and a dictionary for repre-
@@ -222,7 +228,7 @@ class Finder:
                 #The total cost is returned along with the way from the source to the destination
                 return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny),None,None,None)
             #relaxamento
-            neighbours = self.__getNeighbours(currentNode)
+            neighbours = self.getNeighbours(currentNode,is2shuffle)
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1)
@@ -288,8 +294,12 @@ class Finder:
         pathTaken.reverse()
         return pathTaken
 #
-    def __getNeighbours(self,coord:Tuple[int,int],isItDBFS_or_greedy=None) -> List[Tuple[int,int]]:
+    def __getNeighbours(self,coord:Tuple[int,int],is2shuffle:bool,isItDBFS_or_greedy=None) -> List[Tuple[int,int]]:
         neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
+        
+        if is2shuffle:
+            random.shuffle(neighboursBeta)
+        
         #filter the invalid
         for i in range(len(neighboursBeta)):
             if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
@@ -335,12 +345,12 @@ class Finder:
         self.amountNodesVisited:int = 0
     
 class Test():
-    def generateData(self, is2GenerateNewCoordinates:bool, fileCoordinates=None):
+    def generateData(self, is2GenerateNew50Coordinates:bool,is2GenerateNew20Coordinates:bool, file50Coordinates=None, file20Coordinates=None):
         randomCoordinates = []
-        if is2GenerateNewCoordinates:
+        if is2GenerateNew50Coordinates:
             randomCoordinates = self.__generateRandomCoordinates()
         else:
-            randomCoordinates = self.__readCoordinatesFromFile(fileCoordinates)
+            randomCoordinates = self.__readCoordinatesFromFile(file50Coordinates)
         finder = Finder()
         
         i = 0
@@ -354,7 +364,41 @@ class Test():
             self.AstarData(finder,i)
             self.greedyData(finder,i) #tô resolvendo umas coisas com esse ainda
             i += 1
+        
+        randomCoordinates = []
+
+        if is2GenerateNew20Coordinates:
+            randomCoordinates = self.__generateRandomCoordinates(amountCoordinates=20,file2beGeneratedName="random20coordinates.txt")
+        else:
+            randomCoordinates = self.__readCoordinatesFromFile(file20Coordinates)
+        
+        i = 0
+        
+        for coord in randomCoordinates:
+            x1,y1,x2,y2 = coord
+            finder.origin = (x1,y1)
+            finder.destiny = (x2,y2)
+            self.randomizedNeighbourhoodData(finder,i)
+            i += 1
             
+    def randomizedNeighbourhoodData(self, finder:Finder,timesRunned:int):#is2GenerateNewCoordinates:bool, file2BeOpened=None):
+        dataStrucutureMethods = ["popleft","pop"]
+        for dataStructureMethod in dataStrucutureMethods:
+            openingType = self.__selectOpeningType2(timesRunned)
+            
+            fileName = ""
+            if dataStructureMethod == "pop":
+                fileName = f"DFS_random_neighbourhood.txt"
+            elif dataStructureMethod == "popleft":
+                fileName = f"BFS_random_neighbourhood.txt"
+            
+            with open(fileName,openingType) as file:
+                with contextlib.redirect_stdout(file):
+                    print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
+                    finder.runPathFiding("D_BFS","C1",is2shuffle=True,popingMethod=dataStructureMethod)
+                    finder.resetSome()
+        print("isso aí")
+                            
     def AstarData(self, finder:Finder, timesRunned):
         heuristics = ["euclidianHeuristic","manhatamHeuristic"]
         costs = ["C1","C2","C3","C4"]
@@ -415,18 +459,18 @@ class Test():
                         finder.resetSome()
         print("oi")
                         
-    def __generateRandomCoordinates(self):
+    def __generateRandomCoordinates(self, amountCoordinates=50,file2beGeneratedName="random50Coordinates.txt"):
         coordinates = []
-        for i in range(50):
+        for i in range(amountCoordinates):
             
             while True:
-                x1,y1,x2,y2 = (randint(0,30),randint(0,30),randint(0,30),randint(0,30))
+                x1,y1,x2,y2 = (random.randint(0,30),random.randint(0,30),random.randint(0,30),random.randint(0,30))
                 if ((x1,y1) == (x2,y2) or (x1,y1,x2,y2) in coordinates):               
                     continue
                 coordinates.append((x1,y1,x2,y2))
                 break
         
-        with open("randomCoordinates.txt","w") as file:
+        with open(file2beGeneratedName,"w") as file:
             for coord in coordinates:
                 file.write(f"{coord[0]} {coord[1]} {coord[2]} {coord[3]}\n")
         return coordinates
@@ -454,16 +498,17 @@ class Test():
             return "a"
 
 def main():
-    
-    #b = Finder((0,0),(0,5),gridProportion=5)
-    
-    #b.runPathFiding("D_BFS", "C1", popingMethod="pop")
+    #try:   
+    #    b = Finder((0,0),(0,5),gridProportion=5)
+    #    b.runPathFiding("Astar", "C1", is2shuffle=True, heuristicFun="euclidianHeuristic")
+    #except:
+    #    print("oops")
     #b.runPathFiding("Astar", "C1", "euclidianHeuristic")
     #b.runPathFiding("UCS", "C1")
     
     c = Test()
-    c.generateData(is2GenerateNewCoordinates=False,fileCoordinates = "coordinates.txt")
-    
+    #c.generateData(is2GenerateNewCoordinates=False, isfileCoordinates = "coordinates.txt")
+    c.generateData(is2GenerateNew50Coordinates=False, is2GenerateNew20Coordinates=False,file50Coordinates="coordinates.txt", file20Coordinates="20coordinates.txt")
     
     #finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
 
