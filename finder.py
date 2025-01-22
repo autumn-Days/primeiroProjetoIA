@@ -10,30 +10,44 @@ import math
 import heapq
 from collections import deque
 import random
-import contextlib #serve para redirecionar o output do terminal para um arquivo
-import os #biblioteca usada para verificar se um arquivo já está no diretório do projeto
+import contextlib #serve para redirecionar o output do terminal para um arquivo 
 
 class Finder:
     def __init__(self, origin:Tuple[int,int]=None, destiny:Tuple[int, int]=None, gridProportion=30) -> None:
-        #atributes for the coordinates
+        #atributos relacionados às coordenadas
         self.origin = origin
         self.destiny = destiny
-        #atributes for statistics
+        #atributos relacionados às estatísticas
         self.amountNodesGenerated:int = 0
-        self.amountNodesVisited:int = 0
-        #cost related atributes
-        self.totalCost = 0
         #auxiliary atributs
         self.__nodesGenerated:List[Tuple[int,int]] = []
-        self.__nodesVisited: List[Tuple[int,int]] = []
+        self.__nodesExplored: List[Tuple[int,int]] = []
         self.__gridProportion = gridProportion
 
     def runPathFiding(self, pathFidingAlgo:str, costFun:str,heuristicFun:Callable=None,popingMethod=None, is2print=True,is2shuffle=False):
+        """
+        Este método é um wrapper para selecionar os algoritmos de busca. Ele recebe strings do mesmo nome dos métodos de busca e os invoca
+        dinamicamente, juntamente como todos os parâmetros necessários. Esta estratégia foi adotada para facilitar a criação dos arquivos
+        para a análise, pois basta que sejam criadas listas de strings relacionando os algoritmos, funções de custo, heurísticas, etc e 
+        realizar todas as combinações possíveis em um 'for-ninhado'.
+
+        Para utilizá-la, espera-se que seja passado o algoritmo de busca (Astar,greedy,D_BFS ou UCS), a função de custo (C1,C2,C3 ou C4) a heurística,
+        caso seja aplicável, o método de remoção de elementos da fronteira dos algoritmos DFS ou BFS (caso aplicável) e se é desejado aplicar a randomização
+        da vizinhança, caso seja desejado, basta especificar pondo "is2shuffle=True", caso não seja desejado, basta ignorar.
+
+        Como o BFS e o DFS possuem praticamente o mesmo código, sendo que a única mudança de um para outro é que o primeiro implementa um fila
+        e o segundo uma pilha, foi decidido que seria implementado apenas um código e o que iria definir se o código rodaria o BFS ou o DFS seria o
+        método de remoção, ou seja, "popleft" para a fila e "pop" para pilha. Desta forma, para usar o DFS ou o BFS, basta especificar o parâmetro
+        'popingMethod=<"popleft"|"pop">'. Além disso, o método responsável por implementar esses algoritmos se chama "D_BFS", justamente por causa
+        da similaridade da implementação desess algoritmos.
+
+        A main contêm exemplos de utilização desse método
+        """
         pathFidingAlgo:Callable = getattr(self,pathFidingAlgo)
         if pathFidingAlgo.__name__ == "D_BFS":
-            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, popingMethod) #O terceiro parâmetro é o is2shuffle
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, popingMethod)
         else:
-            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, getattr(self,heuristicFun,None)) #o terceiro parametro agr é o is2shuffle
+            totalCost,path,pathCost,heuristicCost,isItHeuristic =  pathFidingAlgo(getattr(self,costFun,None), is2shuffle, getattr(self,heuristicFun,None))
         if is2print:
             if not isItHeuristic:
                 self.__showResult(totalCost,path)
@@ -41,34 +55,31 @@ class Finder:
                 self.__showResult(totalCost,path,isItHeuristic,pathCost,heuristicCost)
         return (totalCost,path)
     
-    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None,is2printCost=False) -> None:
+    def __showResult(self,totalCost:int,path:List[Tuple[str,int,str]],isItHeuristic:str=None,pathCost:int=None,heuristicCost:int=None) -> None:
+        """
+        Este é o método de impressão. Ele é responsável por imprimir as estatísticas e o caminho tomado pelo agente. 
+        Ao final de cada estatística foi posto um símbolo que se relacionasse a ele. A única utilidade é desse símbolo
+        é para a extração de dados após a análise.
+        """
+        
         if isItHeuristic :
             print(f"    Path cost from {path[0][0]} to {self.destiny}: {pathCost}◇    ")
-            #print(f"Heuristic cost from {path[0][0]} to {self.destiny}: {heuristicCost}")
-        print(f"    Total cost from {path[0][0]} to {self.destiny} : {totalCost}•    ")#essas bolas que eu pôs agora é para ficar mais fácil de selecionar todas as partes iguais no vscode para analisar
-        print(f"    Visited from {path[0][0]} to {self.destiny} : {len(path)+1}●    ") #"Um" é subtraido já que dá origem para ela própria se leva 0 passos
+        print(f"    Total cost from {path[0][0]} to {self.destiny} : {totalCost}•    ")
+        print(f"    Visited from {path[0][0]} to {self.destiny} : {len(path)+1}●    ")
         print(f"    Generated from {path[0][0]} to {self.destiny} : {self.amountNodesGenerated}◦    ")
 
-        if (is2printCost):
-            for i in range(len(path)):
-                print(f"{path[i][0]}--({path[i][1]})-->{path[i][2]}")
-                
-        else:
-            for i in range(len(path)):
-                print(f"{path[i][0]}-->{path[i][2]}")
+        for i in range(len(path)):
+            print(f"{path[i][0]}-->{path[i][2]}")
+
     """
     Os próximos dois métodos dizem respeito aos algoritmos de busca heurísticos.
     
     A*:
         
-    Cada nódulo (x,y) é representado pela estrutura: 
+    Cada nódulo (x,y) é representado pela tupla: 
                             `(f(n),(x,y),passos,g(n),h(n))`
     É útil guardar os valores de g(n) pois, desta forma, é possível comparar o
     custo total do caminho trilhado com os algoritmos de busca não informada.
-    
-    De forma semelhante, também é útil guardar h(n), pois desta forma é possível
-    obter o custo heurístico total ao final, o que útil para comparar o A* com 
-    o guloso posteriormente.
     
     Por último, é essencial guardar o f(n) pois ele é o elemento que será usado
     pela heap mínima para selecionar o nódulo com o menor caminho entre o pai
@@ -77,34 +88,32 @@ class Finder:
     Greedy:
         
     A estrutura do nódulo (x,y) do guloso é basicamente a mesma que a do A*, mas,
-    como f(n) = h(n), omitisse o útlimo elemento da tupla. Assim, a sua estrutura
-    é:
-                            `(f(n),(x,y),passos,g(n))`
+    como h(n) é valor que é usado para selecionar elementos da heap binária míni-
+    ma.
                             `(h(n),(x,y),passos,g(n),f(n))`
     """
-
-    def getNeighbours(self, currentNode, is2shuffle, algoName=None):
-        if algoName:
-            return self.__getNeighbours(currentNode, is2shuffle, algoName)
-        return self.__getNeighbours(currentNode, is2shuffle)
 
     def greedy(self, costFun:Callable,is2shuffle:bool, heuristic:Callable):
         """
         Mesmo que o algoritmo guloso não utilize o custo do caminho, `costFun`
         é passado como parâmetro para facilitar a comparação entre ele e os
-        algoritmos de busca não informados.
+        algoritmos de busca não informados, mas o único dado que é levado em consi-
+        deração para fazer a remoção da heap binária mínima é o valor heurístico.
         """
         IT_IS_HEURISTIC = True
         
-        queue = [(0,self.origin,0,0,0)]
-        visited = {self.origin:(0,str(self.origin)+"'",0,0,0)}
+        frontier = [(0,self.origin,0,0,0)]
+        """
+        `mapi` é um mapa. Quando a implementação do algoritmo finaliza a sua execução, ele o retorna para que seja possível traçar
+        o caminho que ele encontrou de (x1,y1) até (x2,y2)
+        """
+        mapi = {self.origin:(0,str(self.origin)+"'",0,0,0)} 
 
-        while queue:
-            currentCost, currentNode, currentSteps,pathCost,totalCost = heapq.heappop(queue)
-            self.__nodesVisited.append(currentNode) #depois eu tenho que me lembrar de pôr isso antes da condição. Isso daqui explica pq eu não tive que subtrair 1 da quantidade de passos na função `pathTaken` para excluir a origem 
+        while frontier:
+            currentCost, currentNode, currentSteps,pathCost,totalCost = heapq.heappop(frontier)
+            self.__nodesExplored.append(currentNode)
             if(currentNode == self.destiny):
-                #totalCost,path,pathCost,heuristicCost,isItHeuristic
-                return (totalCost, self.__pathTaken(visited,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)#f(n) = g(n), por isso currentCost é passado 2 vezes
+                return (totalCost, self.__pathTaken(mapi,self.destiny),pathCost,currentCost,IT_IS_HEURISTIC)
             
             for neighbour in self.getNeighbours(currentNode,is2shuffle,"greedy"):
                 self.amountNodesGenerated += 1
@@ -112,29 +121,25 @@ class Finder:
                 heuristicNeighbour = heuristic(neighbour)
                 costNeighbour = costFun(self.__isItVertical(currentNode, neighbour),currentSteps+1)
                 
-                neighbourTotalCost = totalCost + costNeighbour + heuristicNeighbour #só serve para comparar com o A*   
-                pathCostNeighbour = pathCost + costNeighbour# O custo do path em sí, sem comtar a heurítics    
+                neighbourTotalCost = totalCost + costNeighbour + heuristicNeighbour #Este valor é obtido somente para que seja possível compará-lo com o A*, ele não é considerado para fazer a remoção dos elementos da heap.   
+                pathCostNeighbour = pathCost + costNeighbour#Útil para que se possa compará-lo com os algoritmso de busca não informada    
                 
-                heapq.heappush(queue,(heuristicNeighbour,neighbour,currentSteps+1,pathCostNeighbour,neighbourTotalCost))
-                visited[neighbour] = (heuristicNeighbour,currentNode,currentSteps+1,pathCostNeighbour,neighbourTotalCost)
-                
-                #self.__nodesGenerated.append(neighbour) #comentei essa linha, dps vejo se era importante
+                heapq.heappush(frontier,(heuristicNeighbour,neighbour,currentSteps+1,pathCostNeighbour,neighbourTotalCost)) #o estado recém gerado é adicionado
+                mapi[neighbour] = (heuristicNeighbour,currentNode,currentSteps+1,pathCostNeighbour,neighbourTotalCost)
+    
     def Astar(self, costFunction:Callable, is2shuffle:bool, heuristicFun:Callable) -> Tuple[int,List[Tuple[str,int,str]]]:
         IT_IS_HEURISTIC = True
         
+        frontier = [(0,self.origin,0,0,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
+        mapi = {self.origin:(0,str(self.origin)+"'",0,0,0)} #da fonte para a fonte, a distância é 0
 
-        priorityQueue = [(0,self.origin,0,0,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
-        visited = {self.origin:(0,str(self.origin)+"'",0,0,0)} #da fonte para a fonte, a distância é 0
-        #stepsTaken = 0
-        while priorityQueue:
-            currentCost, currentNode, currentSteps,pathCost,heuristicCost = heapq.heappop(priorityQueue)
-            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
+        while frontier:
+            currentCost, currentNode, currentSteps,pathCost,heuristicCost = heapq.heappop(frontier)
+            self.__nodesExplored.append(currentNode)
             if currentNode == self.destiny :
-                #The total cost is returned along with the way from the source to the destination
-                #totalCost,path,pathCost,heuristicCost,isItHeuristic
-                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny),pathCost,heuristicCost,IT_IS_HEURISTIC)
-            #relaxamento
-            neighbours = self.getNeighbours(currentNode,is2shuffle)#self.__getNeighbours(currentNode)
+                return (mapi[self.destiny][0], self.__pathTaken(mapi,self.destiny),pathCost,heuristicCost,IT_IS_HEURISTIC)
+            #relaxamento - (Terminologia usada em "Introdução a algoritmos", de Thomas Cormem et al.)
+            neighbours = self.getNeighbours(currentNode,is2shuffle)
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 
@@ -145,96 +150,68 @@ class Finder:
                 newPathCost = pathCost + pathValue2neighbour
                 newHeuristicCost = heuristicCost + heuristicValue2neighbour
                 
-                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
-                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1,newPathCost,newHeuristicCost))
-                    visited[neighbour] = (totalCost,currentNode,currentSteps+1,newPathCost,newHeuristicCost)
+                if ((neighbour not in mapi) or (totalCost < mapi[neighbour][0])):
+                    heapq.heappush(frontier, (totalCost,neighbour,currentSteps+1,newPathCost,newHeuristicCost))
+                    mapi[neighbour] = (totalCost,currentNode,currentSteps+1,newPathCost,newHeuristicCost)
 
     def D_BFS(self,costFun:Callable, is2shuffle:bool, popingMethod:str, heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
         """
-        É necessário guardar o pai do nó `current` para fazer o `traceback`,
-        a posição de cada nó gerado (obviamente) e o custo dele até o seu pai,
-        além da quantidade de passos que se leva do filho ao pai para que os 
-        custos C3 e C4 possam ser calculados.
-        
-        Portanto, é possível salvar essas informações em um dicionário com a 
-        estrutura:
+        É possível salvar as informações ligadas aos dados para a análise na estrutura:
             
         (x_{filho}, y_{filho}) : (custo, (x_{pai}, y_{pai}}), passos).
         
-        Uma fila será usada para selecionar os nós que irão ser gerados, enquan-
-        to o dicionário guardará as informações necessárias para fazer o `trace
-        back`. Quanto a fila, era guardará elementos do tipo:
-            
-        (custo, (x_{filho, y_{filho}}), passos)
+        Quanto a fronteira, ela guardará elementos do tipo: (custo, (x_{filho, y_{filho}}), passos).
+
+        Todas as implementações dos algortimos seguem uma variação dessa estrutura de dados.
         """
         
-        i = 0
-        
-        queue = deque()
-        queue.append((0,self.origin,0))
+        frontier = deque()
+        frontier.append((0,self.origin,0))
                      
         travelled = {self.origin: (0,str(self.origin)+"'",0)}       
-        while queue:
-            currentCost, currentNode, currentSteps = getattr(queue,popingMethod)() #usa `pop` para pilha e `popleft` para fila
+        while frontier:
+            currentCost, currentNode, currentSteps = getattr(frontier,popingMethod)() # chama o popleft/pop dinamicamente. Usa `pop` para pilha e `popleft` para fila
             
-            self.__nodesVisited.append(currentNode)
+            self.__nodesExplored.append(currentNode)
             if currentNode == self.destiny:
                 return (currentCost, self.__pathTaken(travelled,self.destiny),currentCost,None,None)
-            #It adds the generated nodes into the queue
+            #It adds the generated nodes into the frontier
             neighbours = self.getNeighbours(currentNode, is2shuffle, "DBFS")
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
-                #para que o DFS não entre em loop infinito e para que o BFS poupe tempo de processamento
+                #Para que o BFS não leve a eternidade para terminar
                 if ((popingMethod == "popleft") and (neighbour in self.__nodesGenerated)):
                     continue
                 newCost = currentCost + costFun(self.__isItVertical(currentNode,neighbour), currentSteps+1)
-                queue.append((newCost,neighbour,currentSteps+1))
+                frontier.append((newCost,neighbour,currentSteps+1))
                 travelled[neighbour] = (newCost, currentNode, currentSteps+1)
                 self.__nodesGenerated.append(neighbour)
-            i +=1
-
 
                 
     def UCS(self, costFunction:Callable, is2shuffle:bool, heuristicFun=None) -> Tuple[int,List[Tuple[str,int,str]]]:
-        """
-        In the way uniform cost search is implementend it depends upon a priority queue
-        for choosing among the adjacents with the minimum path and a dictionary for repre-
-        senting the map. 
-        
-        At the beggining, it may seem like they represent the exact same thing and that
-        the only data structure needed is the dictionary that represent the map, but this
-        is an erronous notion because the algorithm needs a way to be able to store the
-        adjacents nodes of the current node.
-
-        For this, the way found was storing them in the priority queue.
-
-        If we were using the traditional Dijkstra, visited would be of the type
-        dict[str,List[Tuple[int,str]]], but since this is the UCS the type is of 
-        dict[str,Tuple[int,str]]. This happen because of two reasons:
-
-        1. In this variation only the relaxed neighbours are appended into the priority
-        Queue
-        2. The cost between the `current` and `adj` is stored in the `adj`, not in the 
-        `current`, so, when adding elements in the `visited`, this does not generates
-        repeated keys.   
-        """
-        priorityQueue = [(0,self.origin,0)]#distance from parent, nextNode, steps taken to get from parent to nextNode
-        visited = {self.origin:(0,str(self.origin)+"'",0)} #da fonte para a fonte, a distância é 0
-        #stepsTaken = 0
-        while priorityQueue:
-            currentCost, currentNode, currentSteps = heapq.heappop(priorityQueue)
-            self.__nodesVisited.append(currentNode)#acho que o certo era gerado, dps eu mudo. Tbm acho que poderia ser posto antes do if, dps vejo se dá certo
+        frontier = [(0,self.origin,0)]#distance from parent, child, steps taken to get from parent to child
+        mapi = {self.origin:(0,str(self.origin)+"'",0)}
+        while frontier:
+            currentCost, currentNode, currentSteps = heapq.heappop(frontier)
+            self.__nodesExplored.append(currentNode)
             if currentNode == self.destiny :
-                #The total cost is returned along with the way from the source to the destination
-                return (visited[self.destiny][0], self.__pathTaken(visited,self.destiny),None,None,None)
+                """
+                The total cost is returned along with the way from the source to the destination. It also 
+                returns 3 None's only for a matter of compatibility with the other methods. Because, in the
+                way the `runPathFiding` is implemented, it expects all the methods to return exactly the same
+                number or arguments. If it receives None as argument for some of the elements of the tuple, it
+                simplies ignores it. So, in essence, it just returns the parent of the destination along
+                with the `mapi` the path taken from source to destination.
+                """
+                return (mapi[self.destiny][0], self.__pathTaken(mapi,self.destiny),None,None,None)
             #relaxamento
             neighbours = self.getNeighbours(currentNode,is2shuffle)
             for neighbour in neighbours:
                 self.amountNodesGenerated += 1
                 totalCost = currentCost + costFunction(self.__isItVertical(currentNode, neighbour),currentSteps+1)
-                if ((neighbour not in visited) or (totalCost < visited[neighbour][0])):
-                    heapq.heappush(priorityQueue, (totalCost,neighbour,currentSteps+1))
-                    visited[neighbour] = (totalCost,currentNode,currentSteps+1)
+                if ((neighbour not in mapi) or (totalCost < mapi[neighbour][0])):
+                    heapq.heappush(frontier, (totalCost,neighbour,currentSteps+1))
+                    mapi[neighbour] = (totalCost,currentNode,currentSteps+1)
                     
                 
     #methods related to moviment
@@ -248,13 +225,20 @@ class Finder:
             return (position[0]-1, position[1])
 
     #methods related to cost calculations
+    """
+    C1 e C2 recebem alguns argumentos mesmo que não utilizem todos
+    por uma questão de compatibilidade entre o C3 e o C5, pois, como
+    as funções de custo são chamadas em loop pela classe `Test` ao
+    final e são chamadas dinamicamente, essa uniformidade facilita
+    imensamente a implementação e diminui brutalmente o tempo de 
+    implementação.
+    """
     def C1(self, nothingImportant, nothingImportant2) -> None:
         return 10
     def C2(self, isVertical:bool, nothingImportant) -> None:
         if isVertical :
             return  10
         return 15
-    #nas funções de custo C3 e C4 eu subtraio 1 pois a lista já começa com a origem
     def C3(self, isVertical:bool, amountSteps) -> None:
         if isVertical:
             return 10
@@ -278,357 +262,124 @@ class Finder:
         x2,y2 = destiny
         return abs(x1-x2) + abs(y1-y2)
     #auxiliary methods
-    def __pathTaken(self, minSpanningTree:Dict[str,Tuple[int,str]], definitiveDestiny:str):
+    def getNeighbours(self, currentNode, is2shuffle, algoName=None):
+        """
+        Este método é um wrapper para o método __getNeighbours. Ele recebe
+        o estado atual e retorna os nós gerados. A flag `is2shuffle` é mar-
+        cada com verdadeiro quando o se deseja gerar a vizinhança aleatoria-
+        mente para o experimento 4. AlgoName é especificado somente quando 
+        se trata do BFS ou do algoritmo guloso, pois eles são os 2 únicos
+        algoritmos que não geram os filhos que já foram adicionados à fronteira.
+        Por padrão, `algoName` recebe `None` que, em python, em interpretado
+        como falso. 
+        """
+        if algoName:
+            return self.__getNeighbours(currentNode, is2shuffle, algoName)
+        return self.__getNeighbours(currentNode, is2shuffle)
+    #Esse método é responsável por retornar a lista do caminho trilhado de origem até destino
+    def __pathTaken(self, mapi, definitiveDestiny):
         pathTaken:List[Tuple[str,int,str]] = []
         
-        parent:str = minSpanningTree[definitiveDestiny][1]
-        changingDestiny:str = definitiveDestiny
+        parent = mapi[definitiveDestiny][1]
+        changingDestiny = definitiveDestiny
 
         while True:
-            pathTaken.append((minSpanningTree[changingDestiny][1],minSpanningTree[changingDestiny][0],changingDestiny))
+            pathTaken.append((mapi[changingDestiny][1],mapi[changingDestiny][0],changingDestiny))
             changingDestiny = parent
-            parent = minSpanningTree[parent][1]
+            parent = mapi[parent][1]
             if parent == str(self.origin)+"'":
                 break
         
         pathTaken.reverse()
         return pathTaken
-#
+
     def __getNeighbours(self,coord:Tuple[int,int],is2shuffle:bool,isItDBFS_or_greedy=None) -> List[Tuple[int,int]]:
-        neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
+        """
+        Esse método é o responsável por gerar a vizinhança do nó recém-retirado da fronteira. 
         
-        if is2shuffle:
-            random.shuffle(neighboursBeta)
+        A variável `neighboursBeta` obtém elementos que podem ou não estar no espaço de busca, com (1,2) ou (31,4).
+        Por causa dessa incerteza se os elementos contidos nela fazem ou não parte do espaço de busca ela é chamada de
+        "beta".
+
+        Conforme este método executa, ele retira todos os elementos que não pertencem ao espaço de busca
+        """
+        neighboursBeta = [self.__goLeft(coord), self.__goRight(coord), self.__goDown(coord), self.__goUp(coord)]
         
         #filter the invalid
         for i in range(len(neighboursBeta)):
             if (neighboursBeta[i][0] < 0 or neighboursBeta[i][0] > self.__gridProportion) or ((neighboursBeta[i][1] < 0 or neighboursBeta[i][1] > self.__gridProportion)):
                 neighboursBeta[i] = None
+        
+        neighbours = []
+
         if isItDBFS_or_greedy:
-            return [node for node in neighboursBeta if ((node != None) and (not self.__wasItVisited(node)))] # existe a possibilidade da lista retornada estar vazia
+            neighbours =  [node for node in neighboursBeta if ((node != None) and (not self.__wasItExplored(node)))] 
         else:
-            return [node for node in neighboursBeta if (node != None)] # existe a possibilidade da lista retornada estar vazia
+            neighbours = [node for node in neighboursBeta if (node != None)] 
+        
+        #Embaralha os elementos
+        if is2shuffle:
+            random.shuffle(neighbours)
+        return neighbours
 
-
-    def __wasItVisited(self, coord:Tuple[int,int]):
-        return coord in self.__nodesVisited
-
+    #verifica se o estado recém-obtido da fronteira já foi explorado
+    def __wasItExplored(self, coord:Tuple[int,int]):
+        return coord in self.__nodesExplored
     def __isItVertical(self, currentNode:Tuple[int,int], neighbour:Tuple[int,int]):
+        """
+        As funções de custo C3 e C4 variam de custo se o estado a ser visitado 
+        está ou não na vertical. Então este método auxiliar verifica isso.
+        """
         return abs(currentNode[1] - neighbour[1]) > 0
 
-    """
-        #atributes for the coordinates
-        self.origin = origin
-        self.destiny = destiny
-        #atributes for statistics
-        self.amountNodesGenerated:int = 0
-        self.amountNodesVisited:int = 0
-        #cost related atributes
-        self.totalCost = 0
-        #auxiliary atributs
-        self.__nodesGenerated:List[Tuple[int,int]] = []
-        self.__nodesVisited: List[Tuple[int,int]] = []
-        self.__gridProportion = gridProportion
-    """
-
     def resetAll(self):
+        """
+        Reset all the atributes associated with the class.
+        """
         self.origin = None
         self.destiny = None
         self.resetSome()
         
     def resetSome(self):
+        """
+        Reset all the atributes except the origin and the destiny
+        """
         self.__nodesGenerated:List[Tuple[int,int]] = []
-        self.__nodesVisited: List[Tuple[int,int]] = []        
-        self.totalCost = 0
-        self.totalSteps = 0
+        self.__nodesExplored: List[Tuple[int,int]] = []        
         self.amountNodesGenerated:int = 0
-        self.amountNodesVisited:int = 0
     
-class Test():
-    def generateData(self, is2GenerateNew50Coordinates:bool,is2GenerateNew20Coordinates:bool, file50Coordinates=None, file20Coordinates=None):
-        randomCoordinates = []
-        if is2GenerateNew50Coordinates:
-            randomCoordinates = self.__generateRandomCoordinates()
-        else:
-            randomCoordinates = self.__readCoordinatesFromFile(file50Coordinates)
-        finder = Finder()
-        
-        i = 0
-        
-        for coord in randomCoordinates:
-            x1,y1,x2,y2 = coord
-            finder.origin = (x1,y1)
-            finder.destiny = (x2,y2)
-            self.BFS_DFS_Data(finder,i)
-            self.UCSData(finder,i)
-            self.AstarData(finder,i)
-            self.greedyData(finder,i) #tô resolvendo umas coisas com esse ainda
-            i += 1
-        
-        randomCoordinates = []
-
-        if is2GenerateNew20Coordinates:
-            randomCoordinates = self.__generateRandomCoordinates(amountCoordinates=20,file2beGeneratedName="random20coordinates.txt")
-        else:
-            randomCoordinates = self.__readCoordinatesFromFile(file20Coordinates)
-        
-        i = 0
-        
-        for coord in randomCoordinates:
-            x1,y1,x2,y2 = coord
-            finder.origin = (x1,y1)
-            finder.destiny = (x2,y2)
-            self.randomizedNeighbourhoodData(finder,i)
-            i += 1
-            
-    def randomizedNeighbourhoodData(self, finder:Finder,timesRunned:int):#is2GenerateNewCoordinates:bool, file2BeOpened=None):
-        dataStrucutureMethods = ["popleft","pop"]
-        for dataStructureMethod in dataStrucutureMethods:
-            openingType = self.__selectOpeningType2(timesRunned)
-            
-            fileName = ""
-            if dataStructureMethod == "pop":
-                fileName = f"DFS_random_neighbourhood.txt"
-            elif dataStructureMethod == "popleft":
-                fileName = f"BFS_random_neighbourhood.txt"
-            
-            with open(fileName,openingType) as file:
-                with contextlib.redirect_stdout(file):
-                    print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                    finder.runPathFiding("D_BFS","C1",is2shuffle=True,popingMethod=dataStructureMethod)
-                    finder.resetSome()
-        print("isso aí")
-                            
-    def AstarData(self, finder:Finder, timesRunned):
-        heuristics = ["euclidianHeuristic","manhatamHeuristic"]
-        costs = ["C1","C2","C3","C4"]
-
-        for heuristic in heuristics:
-            for cost in costs:
-                openingType = self.__selectOpeningType2(timesRunned)
-                with open(f"Astar_{cost}_{heuristic}.txt",openingType) as file:    
-                    with contextlib.redirect_stdout(file):
-                        print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                        finder.runPathFiding("Astar",cost,heuristic)
-                        finder.resetSome()
-        print("ok")
-            
-    def BFS_DFS_Data(self,finder:Finder,timesRunned):
-        dataStrucutureMethods = ["popleft","pop"]
-        costs = ["C1","C2","C3","C4"]
-
-        for dataStructureMethod in dataStrucutureMethods:
-            for cost in costs:
-                openingType = self.__selectOpeningType2(timesRunned)
-                
-                fileName = ""
-                if dataStructureMethod == "pop":
-                    fileName = f"DFS_{cost}.txt"
-                elif dataStructureMethod == "popleft":
-                    fileName = f"BFS_{cost}.txt"
-                
-                with open(fileName,openingType) as file:
-                    with contextlib.redirect_stdout(file):
-                            print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                            finder.runPathFiding("D_BFS",cost,popingMethod=dataStructureMethod)
-                            finder.resetSome()
-        print("ufa")
-                
-    def UCSData(self, finder:Finder,timesRunned):
-        costs = ["C1","C2","C3","C4"]
-        for cost in costs:
-            openingType = self.__selectOpeningType2(timesRunned)
-            with open(f"UCS_{cost}.txt", openingType) as file:
-                with contextlib.redirect_stdout(file):
-                    print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                    finder.runPathFiding("UCS",cost,"None")#None é o valor da heurística
-                    finder.resetSome()
-        print("aff")
-                
-    def greedyData(self, finder:Finder,timesRunned):
-        heuristics = ["euclidianHeuristic","manhatamHeuristic"]
-        costs = ["C1","C2","C3","C4"]
-
-        for heuristic in heuristics:
-            for cost in costs:
-                openingType = self.__selectOpeningType2(timesRunned)
-                with open(f"greedy_{heuristic}_{cost}.txt",openingType) as file:
-                    with contextlib.redirect_stdout(file):
-                        print(f"-=-=-=-=-=-=-={timesRunned+1}°-=-=-=-=-=-=-=")
-                        finder.runPathFiding("greedy",cost,heuristic)
-                        finder.resetSome()
-        print("oi")
-                        
-    def __generateRandomCoordinates(self, amountCoordinates=50,file2beGeneratedName="random50Coordinates.txt"):
-        coordinates = []
-        for i in range(amountCoordinates):
-            
-            while True:
-                x1,y1,x2,y2 = (random.randint(0,30),random.randint(0,30),random.randint(0,30),random.randint(0,30))
-                if ((x1,y1) == (x2,y2) or (x1,y1,x2,y2) in coordinates):               
-                    continue
-                coordinates.append((x1,y1,x2,y2))
-                break
-        
-        with open(file2beGeneratedName,"w") as file:
-            for coord in coordinates:
-                file.write(f"{coord[0]} {coord[1]} {coord[2]} {coord[3]}\n")
-        return coordinates
 
 
-    def __readCoordinatesFromFile(self, file):
-        allCoordinates = []
-        with open(file,"r") as file:
-            for line in file:
-                if line != "\n":
-                    coordinates = tuple(map(int,line.strip().split())) #coordinates = (x1,y1,x2,y2)
-                    allCoordinates.append(coordinates)
-        return allCoordinates
+def main():   
+    myFinder = Finder((0,0),(30,30)) 
+    #A estrela custo C1, heurística euclidiana
+    myFinder.runPathFiding("Astar", "C1", heuristicFun="euclidianHeuristic")
+    myFinder.resetSome() # sempre é necessária resetar as estruturas de dados após cada teste.
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #A estrela, custo C1, heurística manhatam
+    myFinder.runPathFiding("Astar", "C1", heuristicFun="manhatamHeuristic")
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #DFS com custo C1
+    myFinder.runPathFiding("D_BFS", "C1", popingMethod="pop")
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #BFS com custo C1
+    myFinder.runPathFiding("D_BFS", "C1", popingMethod="popleft") 
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #DFS com vizinhança aleatória
+    myFinder.runPathFiding("D_BFS", "C1", popingMethod="pop", is2shuffle=True) 
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #BFS com vizinhança aleatória
+    myFinder.runPathFiding("D_BFS", "C1", popingMethod="popleft", is2shuffle=True) 
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+    #greedy
+    myFinder.runPathFiding("greedy", "C1", heuristicFun="euclidianHeuristic")
+    myFinder.resetSome()
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
 
-    def __selectOpeningType(self,fileName):
-        if (os.path.isfile(fileName)):
-            return "w"
-        else:
-            return "a"
-
-    def __selectOpeningType2(self,timesRunned:int):
-        if (timesRunned == 0):
-            return "w"
-        else:
-            return "a"
-
-def main():
-    #try:   
-    #    b = Finder((0,0),(0,5),gridProportion=5)
-    #    b.runPathFiding("Astar", "C1", is2shuffle=True, heuristicFun="euclidianHeuristic")
-    #except:
-    #    print("oops")
-    #b.runPathFiding("Astar", "C1", "euclidianHeuristic")
-    #b.runPathFiding("UCS", "C1")
-    
-    c = Test()
-    #c.generateData(is2GenerateNewCoordinates=False, isfileCoordinates = "coordinates.txt")
-    c.generateData(is2GenerateNew50Coordinates=False, is2GenerateNew20Coordinates=False,file50Coordinates="coordinates.txt", file20Coordinates="20coordinates.txt")
-    
-    #finder.runPathFiding("D_BFS",cost,popingMethod=dataStructure)
-
-    #a,c = b.runPathFiding("D_BFS", "C1",popingMethod="popleft")
-    #a,c = b.runPathFid
-    #b.runPathFiding(pathFidingAlgo, costFun)
-    
-    
-    #a.generateData(is2GenerateNewCoordinates=False,fileCoordinates="coordinates.txt")
-    #try:
-    #    a = Finder((8,7),(30,30), gridProportion=30)
-    #   a.runPathFiding("D_BFS", "C2", popingMethod="popleft")
-    #except:
-    #    print("oi")
-    
-    #a = Finder((21,12),(2,7),gridProportion=30)
-    #try:
-    #    b,c = a.runPathFiding("UCS","C1","manhatamHeuristic")
-    #    #b,c = a.BFS("C1")
-        #print(" ")
-    #except TypeError:
-    #    print("deu ruim")
-    #a.tester()
 if __name__ == "__main__":
     main()
-
-"""
-O código tá praticamente pronto. Só falta fazer os seguintes testes/revisões e ajustes antes de fazer o relatório
-
-OK
-1. Se o loop está salvando os outputs dentro dos arquivos certos
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-ok
-2. Testar se a sobreescrição dos arquivos está funcionando, ou seja, se quando "i" == 0 o programa usa o método
-de overwrite ao invés do append (que é usado quando i != 0)
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-ok
-3. Fazer com que o get neighbours só verifique se o nódulo está na lista de visitados quando o BFS/DFS for chamado
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-ok
-4. Analisar o porquê do DFS estar com esse comportamento estranho
-    - Acho que é pq o DFS precisa que eu tire aquela condição do "se o nó já tiver sido gerado, pule"
-        -Não era isso não, tá certo assim msm
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Ok
-5. Analisar porque o guloso tá com aqueles custos heurísticos estranhos entre de um nó para outro
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-    OK
-6. Gerar as funções de movimento na ordem que o Samy quer de acordo com o documento dele
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-    OK
-7. verificar se o cálculo das heurísticas está certa
-    -Calcula na mão cada uma dessas coordenadas e depois confere:
-        (21,6) (7,4)
-            -Euclidiana:
-                -meu: 140
-                -retornado: 140
-            -Manhatam:
-                -meu:160
-                -retornado:160
-                    
-        (12,15) (19,9)
-            -Euclidiana:
-                -meu: 90
-                -ret: 90
-            -Manhatam:
-                -meu:130        
-                -retornado:130
-                
-        (11,17) (27,27)
-            -Euclidiana:
-                -meu: 180
-                -ret: 180
-            -Manhatam:
-                -meu: 260
-                -retornado: 260
-                    
-        (5,11) (4,23):            
-            -Euclidiana:
-                -meu:120
-                -ret:120
-            -Manhatam:
-                -meu: 130
-                -retornado:130
-
-        (13,22) (7,21):
-            -Euclidiana:
-                -meu:60
-                -ret:60
-            -Manhatam:
-                -meu: 70
-                -retornado: 70
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-OK
-- 8. Testar as funções de custo  
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=            
-OK
-8. Revisar e analisar melhor se as coordenadas aleatórias estão sendo postas no x1,y1 e no x2,y2 como o esperado.
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Já revisei demais, deve tá certo
-
-9. Revisar cada algoritmo principalmente para ver se os argumentos que eles estão passando para os métodos auxiliares
-está certo mesmo.
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-Coisas bobas a implementar:  
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-OK
-1. Salvar nos arquivos tbm a quantidade de nós gerados
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-OK
-2. Também por no arquivo quais os nódulos que foram visitados (pra isso é só mudar `steps` para `visitados` e tirar aquele -1)
-    ATENÇÃO: DEPOIS QUE VOCÊ IMPLEMENTAR O 1&2 NÃO SE ESQUEÇA DE ATUALIZAR O RESET E O RESETSOME 
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-3. Implementar a randomização da vizinhaça
-4. Implementar as bobagens do teste 5
-"""
